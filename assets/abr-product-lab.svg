@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 330" role="img" aria-labelledby="title desc">
+<title id="title">ABR / THE MASTERPAD — Independent AI Product Lab</title>
+<desc id="desc">Dark terminal-inspired banner with cyan and green highlights.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0c1420"/><stop offset=".55" stop-color="#111d2a"/><stop offset="1" stop-color="#071319"/></linearGradient>
+  <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#73f4c7"/><stop offset="1" stop-color="#51baf7"/></linearGradient>
+  <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0V34" fill="none" stroke="#294154" stroke-opacity=".24" stroke-width="1"/></pattern>
+</defs>
+<rect width="1200" height="330" rx="20" fill="url(#bg)"/>
+<rect x="1" y="1" width="1198" height="328" rx="19" fill="none" stroke="#315266" stroke-opacity=".65" stroke-width="2"/>
+<rect width="1200" height="330" rx="20" fill="url(#grid)"/>
+<path d="M33 50h66" stroke="#77ecc6" stroke-width="4" stroke-linecap="round"/>
+<circle cx="42" cy="27" r="5" fill="#73f4c7" opacity=".85"/><circle cx="59" cy="27" r="5" fill="#51baf7" opacity=".65"/><circle cx="76" cy="27" r="5" fill="#d7e6f0" opacity=".3"/>
+<text x="36" y="101" fill="#86b5c6" font-size="18" font-family="monospace" letter-spacing="3">INDEPENDENT / AI PRODUCT LAB</text>
+<text x="36" y="172" fill="#f1f8fc" font-size="61" font-weight="800" font-family="Arial, Helvetica, sans-serif" letter-spacing="-2">ABR / THE MASTERPAD</text>
+<rect x="36" y="194" width="520" height="3" rx="1.5" fill="url(#accent)"/>
+<text x="36" y="237" fill="#b6cbd9" font-size="23" font-family="Arial, Helvetica, sans-serif">Ideas engineered into useful software.</text>
+<text x="36" y="291" fill="#75d7b9" font-size="16" font-family="monospace" letter-spacing="1">BUILD   /   TEST   /   VERIFY   /   ITERATE</text>
+<g transform="translate(810 36)">
+  <rect x="0" y="0" width="350" height="254" rx="15" fill="#09131e" stroke="#2c4759" stroke-width="2"/>
+  <rect x="0" y="0" width="350" height="39" rx="15" fill="#172b37"/>
+  <rect x="0" y="29" width="350" height="10" fill="#172b37"/>
+  <circle cx="22" cy="19" r="5" fill="#79f3c6"/><circle cx="40" cy="19" r="5" fill="#4d94bd"/><circle cx="58" cy="19" r="5" fill="#476373"/>
+  <text x="82" y="24" font-size="13" font-family="monospace" fill="#8ba9bb">abr@github: ~</text>
+  <text x="20" y="75" fill="#77f2c8" font-size="14" font-family="monospace">&gt; whoami</text>
+  <text x="20" y="106" fill="#f1f8fc" font-size="18" font-family="monospace">abrthemasterpad</text>
+  <text x="20" y="139" fill="#92b8c7" font-size="14" font-family="monospace">AI  ·  vision  ·  software</text>
+  <text x="20" y="171" fill="#77f2c8" font-size="14" font-family="monospace">&gt; status</text>
+  <text x="20" y="201" fill="#f1f8fc" font-size="15" font-family="monospace">actively building</text>
+  <text x="20" y="231" fill="#92b8c7" font-size="14" font-family="monospace">Chennai, India   |</text>
+</g>
+</svg>
