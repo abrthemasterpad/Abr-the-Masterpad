@@ -15,6 +15,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.GridLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -135,17 +136,30 @@ public final class CosmicHomeActivity extends Activity {
         tile.setBackground(makeTileBackground(false));
         tile.setContentDescription(String.valueOf(info.loadLabel(getPackageManager())));
 
-        TextView planet = new TextView(this);
-        planet.setGravity(Gravity.CENTER);
-        planet.setText(info.loadIcon(getPackageManager()) == null ? "✦" : "✦");
-        planet.setTextSize(30);
-        planet.setTextColor(Color.WHITE);
+        FrameLayout planet = new FrameLayout(this);
         GradientDrawable orb = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{0xFF8B9BFF, 0xFF5B4CB8, 0xFF222B63});
         orb.setShape(GradientDrawable.OVAL);
         orb.setStroke(dp(1), 0xFFB9C8FF);
-        orb.setSize(dp(64), dp(64));
         planet.setBackground(orb);
+
+        // Actual installed-app icon sits inside a planet-like orb.
+        ImageView appIcon = new ImageView(this);
+        appIcon.setImageDrawable(info.loadIcon(getPackageManager()));
+        appIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(dp(34), dp(34), Gravity.CENTER);
+        planet.addView(appIcon, iconLp);
+
+        // Tiny satellite marker on an orbital ring, drawn locally.
+        View orbitDot = new View(this);
+        GradientDrawable dot = new GradientDrawable();
+        dot.setShape(GradientDrawable.OVAL);
+        dot.setColor(0xFFFFE6A6);
+        orbitDot.setBackground(dot);
+        FrameLayout.LayoutParams dotLp = new FrameLayout.LayoutParams(dp(8), dp(8), Gravity.TOP | Gravity.RIGHT);
+        dotLp.topMargin = dp(2);
+        dotLp.rightMargin = dp(8);
+        planet.addView(orbitDot, dotLp);
         tile.addView(planet, new LinearLayout.LayoutParams(dp(64), dp(64)));
 
         TextView label = new TextView(this);
