@@ -49,18 +49,18 @@ $pkg = Invoke-TvAdb @("shell","pm","path",$Package)
 $report.Add(($pkg | Out-String).Trim())
 $report.Add("")
 $report.Add("=== CURRENT HOME RESOLVER ===")
-$home = Invoke-TvAdb @("shell","cmd","package","resolve-activity","--brief","-a","android.intent.action.MAIN","-c","android.intent.category.HOME")
-$report.Add(($home | Out-String).Trim())
+$currentHomeResolver = Invoke-TvAdb @("shell","cmd","package","resolve-activity","--brief","-a","android.intent.action.MAIN","-c","android.intent.category.HOME")
+$report.Add(($currentHomeResolver | Out-String).Trim())
 if (-not $pkg) { throw "Luncher package '$Package' was not found on the TV. Install the official APK first." }
 if ($SetAsHome) {
  Write-Host "Setting Luncher as preferred Home activity. Stock launcher will NOT be disabled." -ForegroundColor Yellow
  Invoke-TvAdb @("shell","cmd","package","set-home-activity",$Activity) | Out-Host
  Start-Sleep -Seconds 2
- $verify = Invoke-TvAdb @("shell","cmd","package","resolve-activity","--brief","-a","android.intent.action.MAIN","-c","android.intent.category.HOME")
+ $verifyHomeResolver = Invoke-TvAdb @("shell","cmd","package","resolve-activity","--brief","-a","android.intent.action.MAIN","-c","android.intent.category.HOME")
  $report.Add("")
  $report.Add("=== HOME RESOLVER AFTER SET-HOME ===")
- $report.Add(($verify | Out-String).Trim())
- if (($verify | Out-String) -notmatch [regex]::Escape($Package)) {
+ $report.Add(($verifyHomeResolver | Out-String).Trim())
+ if (($verifyHomeResolver | Out-String) -notmatch [regex]::Escape($Package)) {
   $report.Add("WARNING: TV did not resolve HOME to Luncher after set-home-activity.")
   Write-Warning "Home resolver did not confirm Luncher. Stock launcher was not disabled."
  }
