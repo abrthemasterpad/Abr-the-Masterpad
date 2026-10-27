@@ -113,7 +113,7 @@ public final class CosmicHomeActivity extends Activity {
         // Do not list this prototype or Settings as a privileged/system shortcut.
         for (ResolveInfo info : launchables) {
             if (info.activityInfo == null || getPackageName().equals(info.activityInfo.packageName)) continue;
-            grid.addView(createTile(info), new GridLayout.LayoutParams());
+            grid.addView(createTile(info));
         }
         if (grid.getChildCount() > 0) {
             grid.getChildAt(0).requestFocus();
