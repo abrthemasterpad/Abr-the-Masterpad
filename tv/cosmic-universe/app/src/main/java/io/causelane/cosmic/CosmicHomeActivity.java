@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Standalone Cosmic Universe Android TV app. It is intentionally not a HOME-category activity:
@@ -142,15 +143,21 @@ public final class CosmicHomeActivity extends Activity {
 
     private void loadApps() {
         PackageManager pm = getPackageManager();
-        Intent query = new Intent(Intent.ACTION_MAIN);
-        query.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
-        List<ResolveInfo> apps = pm.queryIntentActivities(query, 0);
-        if (apps == null || apps.isEmpty()) {
-            query.removeCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
-            query.addCategory(Intent.CATEGORY_LAUNCHER);
-            apps = pm.queryIntentActivities(query, 0);
+        // Query both TV and standard launcher surfaces, then deduplicate by stable component identity.
+        Map<String, ResolveInfo> unique = new java.util.LinkedHashMap<>();
+        Intent tvQuery = new Intent(Intent.ACTION_MAIN);
+        tvQuery.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
+        List<ResolveInfo> tvApps = pm.queryIntentActivities(tvQuery, 0);
+        if (tvApps != null) for (ResolveInfo info : tvApps) {
+            if (info.activityInfo != null) unique.put(info.activityInfo.packageName + "/" + info.activityInfo.name, info);
         }
-        if (apps != null) launchables.addAll(apps);
+        Intent mobileQuery = new Intent(Intent.ACTION_MAIN);
+        mobileQuery.addCategory(Intent.CATEGORY_LAUNCHER);
+        List<ResolveInfo> mobileApps = pm.queryIntentActivities(mobileQuery, 0);
+        if (mobileApps != null) for (ResolveInfo info : mobileApps) {
+            if (info.activityInfo != null) unique.putIfAbsent(info.activityInfo.packageName + "/" + info.activityInfo.name, info);
+        }
+        launchables.addAll(unique.values());
         Collections.sort(launchables, new Comparator<ResolveInfo>() {
             @Override public int compare(ResolveInfo a, ResolveInfo b) {
                 return String.valueOf(a.loadLabel(pm)).compareToIgnoreCase(String.valueOf(b.loadLabel(pm)));
