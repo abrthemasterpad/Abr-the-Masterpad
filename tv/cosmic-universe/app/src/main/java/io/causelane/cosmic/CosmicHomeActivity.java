@@ -57,6 +57,8 @@ public final class CosmicHomeActivity extends Activity {
     private TextView pairingStatus;
     private final List<View> appTiles = new ArrayList<>();
     private byte[] pairingKey;
+    private float remoteDxAccumulator;
+    private float remoteDyAccumulator;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -252,10 +254,15 @@ public final class CosmicHomeActivity extends Activity {
         } else if ("pointer_delta".equals(type)) {
             float dx = (float) command.optDouble("dx", 0);
             float dy = (float) command.optDouble("dy", 0);
-            if (Math.abs(dx) > 0.018f || Math.abs(dy) > 0.018f) {
+            remoteDxAccumulator += dx;
+            remoteDyAccumulator += dy;
+            if (Math.abs(remoteDxAccumulator) > 0.018f || Math.abs(remoteDyAccumulator) > 0.018f) {
                 View focused = getCurrentFocus();
-                int direction = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? View.FOCUS_LEFT : View.FOCUS_RIGHT) :
-                        (dy < 0 ? View.FOCUS_UP : View.FOCUS_DOWN);
+                int direction = Math.abs(remoteDxAccumulator) > Math.abs(remoteDyAccumulator)
+                        ? (remoteDxAccumulator < 0 ? View.FOCUS_LEFT : View.FOCUS_RIGHT)
+                        : (remoteDyAccumulator < 0 ? View.FOCUS_UP : View.FOCUS_DOWN);
+                remoteDxAccumulator = 0f;
+                remoteDyAccumulator = 0f;
                 if (focused != null) {
                     View next = focused.focusSearch(direction);
                     if (next != null) next.requestFocus();
