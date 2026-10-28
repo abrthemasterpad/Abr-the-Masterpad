@@ -6,6 +6,7 @@ import org.java_websocket.server.WebSocketServer;
 import org.json.JSONObject;
 
 import javax.crypto.Cipher;
+import javax.crypto.Mac;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.net.InetSocketAddress;
@@ -26,6 +27,7 @@ public final class RemoteControlServer extends WebSocketServer {
     private final byte[] key;
     private final Handler handler;
     private final Map<WebSocket, Long> lastSequence = new ConcurrentHashMap<>();
+    private final Map<WebSocket, byte[]> connectionKeys = new ConcurrentHashMap<>();
     private final SecureRandom random = new SecureRandom();
 
     public RemoteControlServer(int port, byte[] key, Handler handler) {
@@ -37,7 +39,19 @@ public final class RemoteControlServer extends WebSocketServer {
     }
 
     @Override public void onOpen(WebSocket conn, ClientHandshake handshake) {
-        lastSequence.put(conn, -1L);
+        try {
+            byte[] challenge = new byte[16];
+            random.nextBytes(challenge);
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(key, "HmacSHA256"));
+            connectionKeys.put(conn, mac.doFinal(challenge));
+            lastSequence.put(conn, -1L);
+            JSONObject challengeMessage = new JSONObject();
+            challengeMessage.put("challenge", Base64.getEncoder().encodeToString(challenge));
+            conn.send(challengeMessage.toString());
+        } catch (Exception e) {
+            conn.close(1008, "Secure handshake failed");
+        }
         handler.onPeerCountChanged(getConnections().size());
     }
 
@@ -49,7 +63,9 @@ public final class RemoteControlServer extends WebSocketServer {
             byte[] ciphertext = Base64.getDecoder().decode(envelope.getString("ct"));
             if (iv.length != 12 || ciphertext.length > 48000) return;
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "AES"), new GCMParameterSpec(128, iv));
+            byte[] sessionKey = connectionKeys.get(conn);
+            if (sessionKey == null) return;
+            cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(sessionKey, "AES"), new GCMParameterSpec(128, iv));
             byte[] clear = cipher.doFinal(ciphertext);
             JSONObject command = new JSONObject(new String(clear, StandardCharsets.UTF_8));
             long seq = command.optLong("seq", -1L);
@@ -75,6 +91,7 @@ public final class RemoteControlServer extends WebSocketServer {
 
     @Override public void onClose(WebSocket conn, int code, String reason, boolean remote) {
         lastSequence.remove(conn);
+        connectionKeys.remove(conn);
         handler.onPeerCountChanged(getConnections().size());
     }
     @Override public void onError(WebSocket conn, Exception ex) { /* surfaced through peer count/diagnostics in later pass */ }
