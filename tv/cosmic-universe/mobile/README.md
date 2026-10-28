@@ -28,4 +28,4 @@ This module is an early native Android companion for the Cosmic Universe TV prot
 5. Disconnect when finished. Restarting the TV app generates a new pairing key.
 
 ## Privacy
-The app contains no login and sends no telemetry. The local socket is used only for explicit controller commands. Voice uses the Android speech-recognition service available on the device; service/provider behavior may vary. Camera permission is not needed by the current prototype and should not be added until camera-to-TV is implemented.
+The app contains no login and sends no telemetry. The local socket is used only for explicit controller commands. Voice uses the Android speech-recognition service available on the device; service/provider behavior may vary. Camera permission is used only by the explicit QR scanner; camera-to-TV streaming is not implemented.
