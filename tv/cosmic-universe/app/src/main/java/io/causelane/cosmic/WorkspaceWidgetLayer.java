@@ -238,7 +238,10 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
         try { JSONArray arr = new JSONArray(json); for (int i=0;i<arr.length();i++) { JSONObject o=arr.getJSONObject(i); int x=o.optInt("x",dp(240)), y=o.optInt("y",dp(110));
             if ("todo".equals(o.optString("type"))) { addTodoCard(o.optString("text",""),x,y,o.optBoolean("done",false)); todoCount++; }
             else if ("image".equals(o.optString("type"))) { addImageCard(o.optString("uri",""),x,y,false); imageCount++; }
-            else { addNoteCard(o.optString("text",""),x,y,false); noteCount++; } } } catch(Exception ignored) { }
+            else { addNoteCard(o.optString("text",""),x,y,false); noteCount++; }
+            View restored=getChildAt(getChildCount()-1);
+            if(restored!=null && o.optInt("width",0)>0){ViewGroup.LayoutParams lp=restored.getLayoutParams();lp.width=o.optInt("width");restored.setLayoutParams(lp);}
+        } } catch(Exception ignored) { }
         applyingHistory = false; save();
     }
     private void alignCards() {
@@ -247,11 +250,11 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
             int x=left+col*(cardWidth+gap); int y=top+row*dp(190); v.setX(x);v.setY(y); col++; if(col>=3){col=0;row++;} } save();
     }
     private void layerMenu() {
-        final View[] target = new View[]{getFocusedChild()};
         new AlertDialog.Builder(context).setTitle("Selected card layer").setItems(new String[]{"Bring to front","Send to back"},(d,which)->{
-            View v=getCurrentFocus(); while(v!=null && !(v.getTag() instanceof JSONObject)) v=(View)v.getParent();
-            if(v==null){new AlertDialog.Builder(context).setMessage("Focus a note, task or image card first.").setPositiveButton("OK",null).show();return;}
-            rememberUndo(); if(which==0)v.bringToFront();else {removeView(v);addView(v,0);} save();
+            View selected=null;
+            for(int i=0;i<getChildCount();i++){View candidate=getChildAt(i);if(candidate.getTag() instanceof JSONObject && candidate.hasFocus()){selected=candidate;break;}}
+            if(selected==null){new AlertDialog.Builder(context).setMessage("Focus a note, task or image card first.").setPositiveButton("OK",null).show();return;}
+            rememberUndo(); if(which==0)selected.bringToFront();else {removeView(selected);addView(selected,0);} save();
         }).setNegativeButton("Cancel",null).show();
     }
     private void showLocalAnalysis() {
