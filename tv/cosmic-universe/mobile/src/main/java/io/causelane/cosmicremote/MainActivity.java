@@ -107,10 +107,11 @@ public final class MainActivity extends AppCompatActivity {
         LinearLayout connectRow = row();
         Button scan = button("SCAN TV QR");
         scan.setOnClickListener(v -> new IntentIntegrator(this)
+                .setCaptureActivity(PortraitCaptureActivity.class)
                 .setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
-                .setPrompt("Scan the pairing QR shown on Cosmic Universe TV")
+                .setPrompt("Point at the pairing code on your TV")
                 .setBeepEnabled(false)
-                .setOrientationLocked(false)
+                .setOrientationLocked(true)
                 .initiateScan());
         Button connect = button("CONNECT");
         connect.setOnClickListener(v -> connectManually());
