@@ -53,7 +53,7 @@ public final class CosmicHomeActivity extends Activity {
     private int columns = 5;
     private FrameLayout root;
     private RemoteDrawingView drawingBoard;
-    private RemoteControlServer remoteServer;
+    private RemoteControlServer remoteServer;\n    private WorkspaceWidgetLayer workspace;
     private TextView pairingStatus;
     private final List<View> appTiles = new ArrayList<>();
     private byte[] pairingKey;
@@ -132,11 +132,11 @@ public final class CosmicHomeActivity extends Activity {
         pairPanel.addView(pairingStatus, new LinearLayout.LayoutParams(dp(160), -2));
         FrameLayout.LayoutParams pairLp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.RIGHT);
         pairLp.setMargins(dp(8), dp(8), dp(24), dp(20));
-        root.addView(pairPanel, pairLp);
+        root.addView(pairPanel, pairLp);\n        workspace = new WorkspaceWidgetLayer(this);\n        root.addView(workspace, new FrameLayout.LayoutParams(-1, -1));
         drawingBoard = new RemoteDrawingView(this);
         drawingBoard.setVisibility(View.GONE);
         FrameLayout.LayoutParams drawLp = new FrameLayout.LayoutParams((int)(getResources().getDisplayMetrics().widthPixels * 0.68f), (int)(getResources().getDisplayMetrics().heightPixels * 0.66f), Gravity.CENTER);
-        root.addView(drawingBoard, drawLp);
+        root.addView(drawingBoard, drawLp);\n        drawingBoard.bringToFront();\n        pairPanel.bringToFront();
         setContentView(root);
     }
 
