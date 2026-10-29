@@ -86,7 +86,7 @@ public final class RemoteControlServer extends WebSocketServer {
                 || "stroke_begin".equals(type) || "stroke_points".equals(type)
                 || "stroke_end".equals(type) || "stroke_cancel".equals(type)
                 || "voice_text".equals(type) || "ping".equals(type)
-                || "disconnect".equals(type);
+                || "disconnect".equals(type) || "camera_frame".equals(type);
     }
 
     @Override public void onClose(WebSocket conn, int code, String reason, boolean remote) {
