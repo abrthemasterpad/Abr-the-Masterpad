@@ -22,7 +22,8 @@ import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.zxing.integration.android.IntentIntegrator;\nimport io.causelane.cosmicremote.PortraitCaptureActivity;
+import com.google.zxing.integration.android.IntentIntegrator;
+import io.causelane.cosmicremote.PortraitCaptureActivity;
 import com.google.zxing.integration.android.IntentResult;
 
 import org.json.JSONArray;
