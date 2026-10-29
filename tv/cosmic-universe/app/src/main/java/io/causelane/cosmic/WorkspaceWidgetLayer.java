@@ -37,7 +37,7 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
     private final Context context;
     private final SharedPreferences prefs;
     private final LinearLayout cards;
-    private final TextView clock;
+    private TextView clock;
     private int noteCount = 0;
     private int todoCount = 0;
     private int imageCount = 0;
