@@ -67,6 +67,7 @@ public final class CosmicHomeActivity extends Activity {
     private byte[] pairingKey;
     private float remoteDxAccumulator;
     private float remoteDyAccumulator;
+    private boolean soundEffectsEnabled = true;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -74,6 +75,7 @@ public final class CosmicHomeActivity extends Activity {
                 View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         tileSize = (int) (getResources().getDisplayMetrics().density * 112);
+        soundEffectsEnabled = getSharedPreferences("masterpad_settings", MODE_PRIVATE).getBoolean("sound_effects", true);
         buildUi();
         loadApps();
         startRemoteServer();
@@ -94,7 +96,7 @@ public final class CosmicHomeActivity extends Activity {
         root.addView(content, new FrameLayout.LayoutParams(-1, -1));
 
         TextView title = new TextView(this);
-        title.setText("NEXORA  TV");
+        title.setText("ABR  THE MASTERPAD");
         title.setTextColor(Color.WHITE);
         title.setTextSize(25);
         title.setLetterSpacing(0.12f);
@@ -111,8 +113,8 @@ public final class CosmicHomeActivity extends Activity {
         });
         header.addView(workspaceButton);
         TextView voiceControlButton = headerButton("VOICE CONTROL");
-        voiceControlButton.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Enable Nexora Voice Control")
-                .setMessage("To control apps outside Nexora with voice, Android requires you to explicitly enable the Nexora Voice Control accessibility service. This lets spoken commands navigate, click visible controls, scroll, and use home/back/volume. Voice recognition happens on your phone; commands travel over the paired local connection.")
+        voiceControlButton.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Enable Masterpad Voice Control")
+                .setMessage("To control apps outside Masterpad with voice, Android requires you to explicitly enable the Masterpad Voice Control accessibility service. This lets spoken commands navigate, click visible controls, scroll, and use home/back/volume. Voice recognition happens on your phone; commands travel over the paired local connection.")
                 .setNegativeButton("Not now", null)
                 .setPositiveButton("Open settings", (d,w) -> { try { startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)); } catch(Exception ignored){} }).show());
         LinearLayout.LayoutParams voiceLp = new LinearLayout.LayoutParams(-2, -2);
@@ -123,6 +125,33 @@ public final class CosmicHomeActivity extends Activity {
         LinearLayout.LayoutParams wallpaperLp = new LinearLayout.LayoutParams(-2, -2);
         wallpaperLp.leftMargin = dp(8);
         header.addView(wallpaperButton, wallpaperLp);
+        TextView soundButton = headerButton(soundEffectsEnabled ? "SOUND ON" : "SOUND OFF");
+        soundButton.setOnClickListener(v -> {
+            soundEffectsEnabled = !soundEffectsEnabled;
+            getSharedPreferences("masterpad_settings", MODE_PRIVATE).edit()
+                    .putBoolean("sound_effects", soundEffectsEnabled).apply();
+            soundButton.setText(soundEffectsEnabled ? "SOUND ON" : "SOUND OFF");
+            if (soundEffectsEnabled) v.playSoundEffect(android.view.SoundEffectConstants.CLICK);
+        });
+        LinearLayout.LayoutParams soundLp = new LinearLayout.LayoutParams(-2, -2);
+        soundLp.leftMargin = dp(8);
+        header.addView(soundButton, soundLp);
+        TextView drawingButton = headerButton("DRAW");
+        drawingButton.setOnClickListener(v -> {
+            boolean show = drawingBoard.getVisibility() != View.VISIBLE;
+            drawingBoard.setVisibility(show ? View.VISIBLE : View.GONE);
+            if (show) drawingBoard.bringToFront();
+            else if (pairPanel != null && pairPanel.getVisibility() == View.VISIBLE) pairPanel.bringToFront();
+            drawingButton.setText(show ? "CLOSE DRAW" : "DRAW");
+        });
+        LinearLayout.LayoutParams drawingLp = new LinearLayout.LayoutParams(-2, -2);
+        drawingLp.leftMargin = dp(8);
+        header.addView(drawingButton, drawingLp);
+        TextView prayerButton = headerButton("PRAYER");
+        prayerButton.setOnClickListener(v -> startActivity(new Intent(this, InfoReaderActivity.class)));
+        LinearLayout.LayoutParams prayerLp = new LinearLayout.LayoutParams(-2, -2);
+        prayerLp.leftMargin = dp(8);
+        header.addView(prayerButton, prayerLp);
         TextView pairingButton = headerButton("PAIR REMOTE");
         pairingButton.setOnClickListener(v -> {
             boolean show = pairPanel.getVisibility() != View.VISIBLE;
@@ -156,7 +185,7 @@ public final class CosmicHomeActivity extends Activity {
         scroll.addView(grid, new ScrollView.LayoutParams(-1, -2));
 
         TextView footer = new TextView(this);
-        footer.setText("OK  OPEN     BACK  EXIT     •     OFFLINE WALLPAPERS · LOCAL-FIRST");
+        footer.setText("OK  OPEN     BACK  EXIT     •     LIVING WALLPAPER · LOCAL-FIRST");
         footer.setTextColor(0xFF9AA9CF);
         footer.setTextSize(10);
         LinearLayout.LayoutParams footLp = new LinearLayout.LayoutParams(-2, -2);
@@ -587,10 +616,10 @@ public final class CosmicHomeActivity extends Activity {
             aura.setStroke(dp(focused ? 1 : 0), focused ? 0x667DEBFF : Color.TRANSPARENT);
             iconStage.setBackground(aura);
             label.setTextColor(focused ? 0xFFBCEFFF : Color.WHITE);
-            if (focused) v.playSoundEffect(android.view.SoundEffectConstants.NAVIGATION_LEFT);
+            if (focused && soundEffectsEnabled) v.playSoundEffect(android.view.SoundEffectConstants.NAVIGATION_LEFT);
         });
         tile.setOnClickListener(v -> {
-            v.playSoundEffect(android.view.SoundEffectConstants.CLICK);
+            if (soundEffectsEnabled) v.playSoundEffect(android.view.SoundEffectConstants.CLICK);
             launch(info);
         });
         tile.setOnKeyListener((v, keyCode, event) -> {
