@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nexora_accessibility_description">Nexora voice control lets you navigate apps, activate visible controls, scroll and use home/back/volume commands when you explicitly enable it. Voice commands are sent over your paired local network connection.</string>
+</resources>
