@@ -551,33 +551,22 @@ public final class CosmicHomeActivity extends Activity {
         tile.setBackground(makeTileBackground(false));
         tile.setContentDescription(String.valueOf(info.loadLabel(getPackageManager())));
 
-        FrameLayout planet = new FrameLayout(this);
-        GradientDrawable orb = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{0xFF8B9BFF, 0xFF5B4CB8, 0xFF222B63});
-        orb.setShape(GradientDrawable.OVAL);
-        orb.setStroke(dp(1), 0xFFB9C8FF);
-        planet.setBackground(orb);
+        // Minimal icon stage: no tile box or decorative badge, just a white logo and a soft focus aura.
+        FrameLayout iconStage = new FrameLayout(this);
+        GradientDrawable aura = new GradientDrawable();
+        aura.setShape(GradientDrawable.OVAL);
+        aura.setColor(Color.TRANSPARENT);
+        iconStage.setBackground(aura);
 
-        // Actual installed-app icon sits inside a planet-like orb.
         ImageView appIcon = new ImageView(this);
         int themedIcon = themedIconForLabel(String.valueOf(info.loadLabel(getPackageManager())).toLowerCase(java.util.Locale.ROOT));
         if (themedIcon != 0) appIcon.setImageResource(themedIcon);
         else appIcon.setImageDrawable(info.loadIcon(getPackageManager()));
+        appIcon.setColorFilter(Color.WHITE);
         appIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(dp(34), dp(34), Gravity.CENTER);
-        planet.addView(appIcon, iconLp);
-
-        // Tiny satellite marker on an orbital ring, drawn locally.
-        View orbitDot = new View(this);
-        GradientDrawable dot = new GradientDrawable();
-        dot.setShape(GradientDrawable.OVAL);
-        dot.setColor(0xFFFFE6A6);
-        orbitDot.setBackground(dot);
-        FrameLayout.LayoutParams dotLp = new FrameLayout.LayoutParams(dp(8), dp(8), Gravity.TOP | Gravity.RIGHT);
-        dotLp.topMargin = dp(2);
-        dotLp.rightMargin = dp(8);
-        planet.addView(orbitDot, dotLp);
-        tile.addView(planet, new LinearLayout.LayoutParams(dp(64), dp(64)));
+        FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(dp(52), dp(52), Gravity.CENTER);
+        iconStage.addView(appIcon, iconLp);
+        tile.addView(iconStage, new LinearLayout.LayoutParams(dp(68), dp(62)));
 
         TextView label = new TextView(this);
         label.setText(info.loadLabel(getPackageManager()));
@@ -590,13 +579,20 @@ public final class CosmicHomeActivity extends Activity {
         labelLp.topMargin = dp(6);
         tile.addView(label, labelLp);
 
+        tile.setBackgroundColor(Color.TRANSPARENT);
         tile.setOnFocusChangeListener((v, focused) -> {
-            v.setScaleX(focused ? 1.09f : 1f);
-            v.setScaleY(focused ? 1.09f : 1f);
-            v.setBackground(makeTileBackground(focused));
-            planet.animate().rotationBy(focused ? 18f : -18f).setDuration(220).start();
+            v.animate().scaleX(focused ? 1.10f : 1f).scaleY(focused ? 1.10f : 1f)
+                    .setDuration(180L).start();
+            aura.setColor(focused ? 0x3346D9FF : Color.TRANSPARENT);
+            aura.setStroke(dp(focused ? 1 : 0), focused ? 0x667DEBFF : Color.TRANSPARENT);
+            iconStage.setBackground(aura);
+            label.setTextColor(focused ? 0xFFBCEFFF : Color.WHITE);
+            if (focused) v.playSoundEffect(android.view.SoundEffectConstants.NAVIGATION_LEFT);
         });
-        tile.setOnClickListener(v -> launch(info));
+        tile.setOnClickListener(v -> {
+            v.playSoundEffect(android.view.SoundEffectConstants.CLICK);
+            launch(info);
+        });
         tile.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() == KeyEvent.ACTION_UP &&
                     (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
