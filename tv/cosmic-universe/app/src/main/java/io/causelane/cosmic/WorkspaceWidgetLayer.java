@@ -92,6 +92,9 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
                     save();
                 }).show());
         toolbar.addView(reset);
+        Button closeWorkspace = toolButton("Close workspace");
+        closeWorkspace.setOnClickListener(v -> setVisibility(GONE));
+        toolbar.addView(closeWorkspace);
 
         clock = label("", 20, Color.WHITE);
         clock.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
