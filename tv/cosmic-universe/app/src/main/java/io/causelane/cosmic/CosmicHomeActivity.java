@@ -1,6 +1,7 @@
 package io.causelane.cosmic;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -47,6 +48,7 @@ import java.util.List;
  */
 public final class CosmicHomeActivity extends Activity {
     private CosmicSkyView sky;
+    private ImageView wallpaperView;
     private GridLayout grid;
     private final List<ResolveInfo> launchables = new ArrayList<>();
     private int tileSize;
@@ -78,6 +80,10 @@ public final class CosmicHomeActivity extends Activity {
         root = new FrameLayout(this);
         sky = new CosmicSkyView(this);
         root.addView(sky, new FrameLayout.LayoutParams(-1, -1));
+        wallpaperView = new ImageView(this);
+        wallpaperView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        wallpaperView.setVisibility(View.GONE);
+        root.addView(wallpaperView, new FrameLayout.LayoutParams(-1, -1));
 
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -85,7 +91,7 @@ public final class CosmicHomeActivity extends Activity {
         root.addView(content, new FrameLayout.LayoutParams(-1, -1));
 
         TextView title = new TextView(this);
-        title.setText("COSMIC  UNIVERSE");
+        title.setText("NEXORA  TV");
         title.setTextColor(Color.WHITE);
         title.setTextSize(25);
         title.setLetterSpacing(0.12f);
@@ -101,6 +107,11 @@ public final class CosmicHomeActivity extends Activity {
             workspaceButton.setText(show ? "CLOSE WORKSPACE" : "WORKSPACE");
         });
         header.addView(workspaceButton);
+        TextView wallpaperButton = headerButton("WALLPAPERS");
+        wallpaperButton.setOnClickListener(v -> showWallpaperPicker());
+        LinearLayout.LayoutParams wallpaperLp = new LinearLayout.LayoutParams(-2, -2);
+        wallpaperLp.leftMargin = dp(8);
+        header.addView(wallpaperButton, wallpaperLp);
         TextView pairingButton = headerButton("PAIR REMOTE");
         pairingButton.setOnClickListener(v -> {
             boolean show = pairPanel.getVisibility() != View.VISIBLE;
@@ -114,7 +125,7 @@ public final class CosmicHomeActivity extends Activity {
         content.addView(header);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("YOUR APPS · YOUR ORBIT");
+        subtitle.setText("NEXORA · YOUR TV, YOUR SPACE");
         subtitle.setTextColor(0xFFB9C8F6);
         subtitle.setTextSize(12);
         subtitle.setLetterSpacing(0.18f);
@@ -134,7 +145,7 @@ public final class CosmicHomeActivity extends Activity {
         scroll.addView(grid, new ScrollView.LayoutParams(-1, -2));
 
         TextView footer = new TextView(this);
-        footer.setText("OK  OPEN     BACK  EXIT     •     LOCAL ANIMATIONS · NO VIDEO BACKGROUND");
+        footer.setText("OK  OPEN     BACK  EXIT     •     OFFLINE WALLPAPERS · LOCAL-FIRST");
         footer.setTextColor(0xFF9AA9CF);
         footer.setTextSize(10);
         LinearLayout.LayoutParams footLp = new LinearLayout.LayoutParams(-2, -2);
@@ -167,6 +178,54 @@ public final class CosmicHomeActivity extends Activity {
         root.addView(drawingBoard, drawLp);
         drawingBoard.bringToFront();
         setContentView(root);
+        applySavedWallpaper();
+    }
+
+    private static final String[] WALLPAPER_LABELS = {
+            "Animated default", "Mountain Sunrise", "Beach Paradise", "Rainy City", "Snowy Winter",
+            "Autumn Forest", "City Lights", "Wildlife Safari", "Lotus Pond", "Summer Sunflowers", "Abstract Flow"
+    };
+    private static final String[] WALLPAPER_RESOURCES = {
+            "", "mountain_sunrise", "beach_summer", "rainy_window", "snow_winter",
+            "autumn_forest", "city_night", "wildlife_lion", "nature_lotus", "summer_field", "abstract_flow"
+    };
+
+    private void showWallpaperPicker() {
+        new AlertDialog.Builder(this)
+                .setTitle("Choose your wallpaper")
+                .setItems(WALLPAPER_LABELS, (dialog, which) -> {
+                    getSharedPreferences("nexora_settings", MODE_PRIVATE).edit().putInt("wallpaper_index", which).apply();
+                    applyWallpaper(which);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void applySavedWallpaper() {
+        int selected = getSharedPreferences("nexora_settings", MODE_PRIVATE).getInt("wallpaper_index", 0);
+        applyWallpaper(Math.max(0, Math.min(selected, WALLPAPER_LABELS.length - 1)));
+    }
+
+    private void applyWallpaper(int index) {
+        if (index <= 0) {
+            wallpaperView.setVisibility(View.GONE);
+            sky.setVisibility(View.VISIBLE);
+            return;
+        }
+        String resourceName = WALLPAPER_RESOURCES[index];
+        int resourceId = getResources().getIdentifier(resourceName, "drawable", getPackageName());
+        if (resourceId == 0) {
+            wallpaperView.setVisibility(View.GONE);
+            sky.setVisibility(View.VISIBLE);
+            new AlertDialog.Builder(this).setTitle("Wallpaper unavailable")
+                    .setMessage("This wallpaper was not included in this APK build. Rebuild the complete asset bundle.")
+                    .setPositiveButton("OK", null).show();
+            return;
+        }
+        wallpaperView.setImageResource(resourceId);
+        wallpaperView.setContentDescription(WALLPAPER_LABELS[index]);
+        wallpaperView.setVisibility(View.VISIBLE);
+        sky.setVisibility(View.GONE);
     }
 
     private TextView headerButton(String text) {
