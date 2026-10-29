@@ -162,7 +162,7 @@ public final class MainActivity extends AppCompatActivity {
         b.setTextSize(10);
         b.setOnClickListener(v -> {
             if ("voice".equals(mode)) startVoice();
-            else showMode(mode);
+            else { if (!"camera".equals(mode) && cameraStreamActive) stopCameraStream(true); showMode(mode); }
         });
         row.addView(b, weighted());
     }
@@ -260,7 +260,9 @@ public final class MainActivity extends AppCompatActivity {
         if (camera != null) { try { camera.stopPreview(); } catch (Exception ignored) { } try { camera.release(); } catch (Exception ignored) { } camera = null; }
     }
     private void stopCameraStream(boolean notifyTv) {
-        cameraStreamActive = false; cameraHandler.removeCallbacksAndMessages(null); releaseCamera(); cameraSurface = null;
+        cameraStreamActive = false; cameraHandler.removeCallbacksAndMessages(null); releaseCamera();
+        if (cameraSurface != null && cameraSurface.getParent() instanceof ViewGroup) ((ViewGroup) cameraSurface.getParent()).removeView(cameraSurface);
+        cameraSurface = null;
         if (notifyTv && client != null && client.isOpen()) send("camera_stop");
         if (status != null) status.setText("Camera stream stopped.");
     }
