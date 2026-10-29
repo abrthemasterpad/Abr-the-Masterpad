@@ -248,7 +248,7 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
         delete.setOnClickListener(v -> { removeView(card); save(); });
         LinearLayout actions = new LinearLayout(context);
         actions.setGravity(Gravity.RIGHT);
-        actions.addView(edit); actions.addView(delete);
+        actions.addView(edit); addResizeAction(card, actions); actions.addView(delete);
         card.addView(actions);
         placeCard(card, x, y);
         if (persist) save();
@@ -286,6 +286,16 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
         if (done) toggle.setAlpha(0.55f);
     }
 
+    private void addResizeAction(View card, LinearLayout actions) {
+        Button resize = tinyButton("Size");
+        resize.setOnClickListener(v -> {
+            ViewGroup.LayoutParams lp = card.getLayoutParams();
+            int current = lp.width;
+            lp.width = current < dp(270) ? dp(300) : current < dp(350) ? dp(380) : dp(230);
+            card.setLayoutParams(lp); save();
+        });
+        actions.addView(resize);
+    }
     private LinearLayout cardShell(int color, int stroke) {
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
