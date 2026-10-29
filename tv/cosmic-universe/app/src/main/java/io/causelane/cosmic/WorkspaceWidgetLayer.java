@@ -266,12 +266,14 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
             boolean checked = !toggle.getText().toString().startsWith("✓");
             toggle.setText((checked ? "✓  " : "○  ") + text);
             toggle.setAlpha(checked ? 0.55f : 1f);
+            try { ((JSONObject) card.getTag()).put("done", checked); } catch (Exception ignored) { }
             save();
         });
         card.addView(toggle);
         Button edit = tinyButton("Edit");
         edit.setOnClickListener(v -> promptText("Edit task", text, updated -> {
             toggle.setText((toggle.getText().toString().startsWith("✓") ? "✓  " : "○  ") + updated);
+            try { ((JSONObject) card.getTag()).put("text", updated); } catch (Exception ignored) { }
             save();
         }));
         Button delete = tinyButton("×");
@@ -308,7 +310,11 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
                     }
                     return true;
                 case MotionEvent.ACTION_UP:
-                    moving = null; save(); return true;
+                    moving = null;
+                    float snap = dp(16);
+                    v.setX(Math.max(0, Math.round(v.getX() / snap) * snap));
+                    v.setY(Math.max(dp(58), Math.round(v.getY() / snap) * snap));
+                    save(); return true;
             }
             return true;
         });
