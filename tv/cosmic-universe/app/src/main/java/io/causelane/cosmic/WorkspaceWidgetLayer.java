@@ -119,6 +119,9 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
             } catch (NumberFormatException e) { new AlertDialog.Builder(context).setMessage("Enter a delay from 1 to 10080 minutes.").setPositiveButton("OK", null).show(); }
         }));
         toolbar.addView(reminder);
+        Button daily = toolButton("Prayer + News");
+        daily.setOnClickListener(v -> context.startActivity(new Intent(context, InfoReaderActivity.class)));
+        toolbar.addView(daily);
         Button reset = toolButton("Reset layout");
         reset.setOnClickListener(v -> new AlertDialog.Builder(context).setTitle("Reset workspace?")
                 .setMessage("Remove the current notes and tasks from this TV?")
