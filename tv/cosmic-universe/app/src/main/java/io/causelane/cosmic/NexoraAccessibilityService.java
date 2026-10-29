@@ -4,6 +4,8 @@ import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.content.Intent;
 import android.media.AudioManager;
+import android.view.KeyEvent;
+import android.os.Bundle;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.content.pm.ResolveInfo;
@@ -32,6 +34,17 @@ public final class NexoraAccessibilityService extends AccessibilityService {
         if(q.equals("back")||q.equals("go back"))return performGlobalAction(GLOBAL_ACTION_BACK);
         if(q.equals("recent apps")||q.equals("show recent apps"))return performGlobalAction(GLOBAL_ACTION_RECENTS);
         AudioManager audio=(AudioManager)getSystemService(AUDIO_SERVICE);
+        if(q.contains("play pause")||q.equals("pause")||q.equals("resume")||q.equals("play")||q.equals("toggle playback")){dispatchMedia(audio,KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);return true;}
+        if(q.equals("next track")||q.equals("next song")||q.equals("skip")){dispatchMedia(audio,KeyEvent.KEYCODE_MEDIA_NEXT);return true;}
+        if(q.equals("previous track")||q.equals("previous song")){dispatchMedia(audio,KeyEvent.KEYCODE_MEDIA_PREVIOUS);return true;}
+        if(q.startsWith("type ")||q.startsWith("enter text ")){
+            String value=q.startsWith("type ")?raw.trim().substring(5).trim():raw.trim().substring(11).trim();
+            AccessibilityNodeInfo root=getRootInActiveWindow(); if(root==null)return false;
+            AccessibilityNodeInfo focused=root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+            if(focused==null||!focused.isEditable())return false;
+            Bundle args=new Bundle();args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,value);
+            return focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,args);
+        }
         if(q.contains("mute")){if(audio!=null)audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_MUTE,0);return true;}
         if(q.contains("unmute")){if(audio!=null)audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_UNMUTE,0);return true;}
         if(q.contains("volume up")||q.contains("louder")||q.contains("increase volume")){if(audio!=null)audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_RAISE,AudioManager.FLAG_SHOW_UI);return true;}
@@ -45,6 +58,11 @@ public final class NexoraAccessibilityService extends AccessibilityService {
         String app=q.replaceFirst("^(open|launch|start|play|watch|switch to|go to)\\\\s+","").trim();
         if(!app.isEmpty()&&launchApp(app))return true;
         return false;
+    }
+    private void dispatchMedia(AudioManager audio,int keyCode){
+        if(audio==null)return;
+        audio.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN,keyCode));
+        audio.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_UP,keyCode));
     }
     private boolean launchApp(String query){
         Intent tv=new Intent(Intent.ACTION_MAIN);tv.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
