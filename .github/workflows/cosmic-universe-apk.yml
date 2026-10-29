@@ -46,6 +46,14 @@ jobs:
           done
           test "$count" -ge 10
           echo "Generated $count offline 1920x1080 wallpaper resources"
+          icon_count=0
+          for svg in tv/cosmic-universe/icons/*.svg; do
+            name="$(basename "$svg" .svg)"
+            rsvg-convert --width 192 --height 192 "$svg" > "tv/cosmic-universe/app/src/main/res/drawable-nodpi/$name.png"
+            icon_count=$((icon_count + 1))
+          done
+          test "$icon_count" -ge 20
+          echo "Generated $icon_count original Nexora icon-pack resources"
       - name: Compile and package debug APK
         working-directory: tv/cosmic-universe
         run: gradle --no-daemon :app:assembleDebug :mobile:assembleDebug
