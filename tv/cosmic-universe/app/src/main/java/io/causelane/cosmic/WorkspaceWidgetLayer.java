@@ -83,8 +83,13 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
                 .setMessage("Remove the current notes and tasks from this TV?")
                 .setNegativeButton("Cancel", null).setPositiveButton("Reset", (d, w) -> {
                     prefs.edit().remove("cards").apply();
-                    removeViews();
-                    recreateWorkspace();
+                    for (int i = getChildCount() - 1; i >= 0; i--) {
+                        View child = getChildAt(i);
+                        if (child.getTag() instanceof JSONObject) removeViewAt(i);
+                    }
+                    noteCount = 0;
+                    todoCount = 0;
+                    save();
                 }).show());
         toolbar.addView(reset);
 
