@@ -29,3 +29,8 @@
 5. Add TLS identity pinning before use on untrusted networks.
 6. Measure end-to-end drawing latency and dropped/coalesced points under repeated Wi-Fi trials.
 7. Expand the initial widget layer into a complete editor with resize, alignment/snap, z-order, undo/redo and schema migrations.
+
+
+## Install compatibility fix (2026-10-29)
+- Changed the TV APK application ID from `io.causelane.cosmic` to `io.causelane.cosmic.masterpad` and incremented version to 0.3.0. This allows the new build to install alongside a different-signed older Cosmic Universe package rather than attempting an incompatible update.
+- Consequence: Android treats this as a separate app; it will not replace or inherit data from the old package. Do not uninstall the old app unless you deliberately want to remove it. The updated APK must be rebuilt and downloaded from CI before testing this fix.
