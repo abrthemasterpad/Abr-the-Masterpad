@@ -370,6 +370,47 @@ public final class CosmicHomeActivity extends Activity {
         return null;
     }
 
+    private void filterApps(String raw) {
+        String query = raw.trim().toLowerCase(java.util.Locale.ROOT);
+        for (View tile : appTiles) {
+            CharSequence label = tile.getContentDescription();
+            tile.setVisibility(query.isEmpty() || (label != null && label.toString().toLowerCase(java.util.Locale.ROOT).contains(query)) ? View.VISIBLE : View.GONE);
+        }
+        if (grid != null) {
+            View focused = getCurrentFocus();
+            if (focused == null || focused.getVisibility() != View.VISIBLE) for (View tile : appTiles) if (tile.getVisibility() == View.VISIBLE) { tile.requestFocus(); break; }
+        }
+    }
+
+    /** Local voice-command router; transcription is supplied by the paired phone. */
+    private void handleVoiceCommand(String raw) {
+        String q = raw == null ? "" : raw.trim().toLowerCase(java.util.Locale.ROOT);
+        if (q.isEmpty()) return;
+        if (q.contains("workspace") || q.contains("notes") || q.contains("todo") || q.contains("tasks")) {
+            workspace.setVisibility(View.VISIBLE); workspace.bringToFront(); workspace.requestFocus(); return;
+        }
+        if (q.contains("wallpaper") || q.contains("background")) { showWallpaperPicker(); return; }
+        if (q.contains("prayer") || q.contains("news") || q.contains("headlines")) { startActivity(new Intent(this, InfoReaderActivity.class)); return; }
+        if (q.contains("volume up") || q.contains("increase volume") || q.contains("louder")) {
+            dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_VOLUME_UP));
+            dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_VOLUME_UP)); return;
+        }
+        if (q.contains("volume down") || q.contains("decrease volume") || q.contains("quieter")) {
+            dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_VOLUME_DOWN));
+            dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_VOLUME_DOWN)); return;
+        }
+        if (q.equals("back") || q.equals("go back")) { onBackPressed(); return; }
+        if (q.contains("show all apps") || q.contains("clear search") || q.equals("home")) { filterApps(""); return; }
+        String search = q.replaceFirst("^(open|launch|start|find|search for|show me)\\s+", "").trim();
+        for (View tile : appTiles) {
+            CharSequence label = tile.getContentDescription();
+            if (label != null && label.toString().toLowerCase(java.util.Locale.ROOT).contains(search)) {
+                tile.setVisibility(View.VISIBLE); tile.requestFocus(); tile.performClick(); return;
+            }
+        }
+        filterApps(search);
+    }
+
     private void handleRemoteCommand(JSONObject command) {
         String type = command.optString("type", "");
         if ("key".equals(type)) {
@@ -407,18 +448,10 @@ public final class CosmicHomeActivity extends Activity {
         } else if ("pointer_tap".equals(type)) {
             View focused = getCurrentFocus();
             if (focused != null) focused.performClick();
-        } else if ("text_input".equals(type) || "voice_text".equals(type)) {
-            String query = command.optString("text", "").trim().toLowerCase(java.util.Locale.ROOT);
-            for (View tile : appTiles) {
-                CharSequence label = tile.getContentDescription();
-                tile.setVisibility(query.isEmpty() || (label != null && label.toString().toLowerCase(java.util.Locale.ROOT).contains(query)) ? View.VISIBLE : View.GONE);
-            }
-            if (grid != null) {
-                View focused = getCurrentFocus();
-                if (focused == null || focused.getVisibility() != View.VISIBLE) {
-                    for (View tile : appTiles) if (tile.getVisibility() == View.VISIBLE) { tile.requestFocus(); break; }
-                }
-            }
+        } else if ("voice_text".equals(type)) {
+            handleVoiceCommand(command.optString("text", ""));
+        } else if ("text_input".equals(type)) {
+            filterApps(command.optString("text", ""));
         } else if ("stroke_begin".equals(type)) {
             if (drawingBoard != null) {
                 drawingBoard.setVisibility(View.VISIBLE);
