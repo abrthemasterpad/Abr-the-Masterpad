@@ -69,7 +69,7 @@ public final class InfoReaderActivity extends Activity {
                     + "\\n\\nCalculation method: Muslim World League (method 3). Verify local mosque timings where precision matters.";
             } catch (Exception e) { result = "Prayer times could not be loaded. Check the internet connection and city/country spelling.\\n\\nSource: AlAdhan public prayer-time API."; }
             finally { if (conn != null) conn.disconnect(); }
-            String shown = result; runOnUiThread(() -> output.setText(shown));
+            String shown = result; runOnUiThread(() -> { newsList.removeAllViews(); output = new TextView(this); output.setText(shown); output.setTextColor(0xFF17243A); output.setTextSize(18); output.setTypeface(Typeface.SERIF); output.setPadding(dp(10),dp(18),dp(10),dp(18)); newsList.addView(output); });
         }).start();
     }
     private void chooseNewsFeed() {
