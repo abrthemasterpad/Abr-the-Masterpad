@@ -48,7 +48,8 @@ public final class NexoraAccessibilityService extends AccessibilityService {
     }
     private boolean launchApp(String query){
         Intent tv=new Intent(Intent.ACTION_MAIN);tv.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
-        List<ResolveInfo> matches=getPackageManager().queryIntentActivities(tv,0);
+        List<ResolveInfo> tvResults=getPackageManager().queryIntentActivities(tv,0);
+        List<ResolveInfo> matches=new java.util.ArrayList<>(); if(tvResults!=null)matches.addAll(tvResults);
         Intent mobile=new Intent(Intent.ACTION_MAIN);mobile.addCategory(Intent.CATEGORY_LAUNCHER);
         List<ResolveInfo> standard=getPackageManager().queryIntentActivities(mobile,0);if(standard!=null)matches.addAll(standard);
         for(ResolveInfo info:matches){if(info.activityInfo==null)continue;String label=String.valueOf(info.loadLabel(getPackageManager())).toLowerCase(Locale.ROOT);
