@@ -8,6 +8,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
@@ -49,6 +50,7 @@ import java.util.List;
 public final class CosmicHomeActivity extends Activity {
     private CosmicSkyView sky;
     private ImageView wallpaperView;
+    private ImageView cameraFrameView;
     private GridLayout grid;
     private final List<ResolveInfo> launchables = new ArrayList<>();
     private int tileSize;
@@ -177,6 +179,11 @@ public final class CosmicHomeActivity extends Activity {
         FrameLayout.LayoutParams drawLp = new FrameLayout.LayoutParams((int)(getResources().getDisplayMetrics().widthPixels * 0.68f), (int)(getResources().getDisplayMetrics().heightPixels * 0.66f), Gravity.CENTER);
         root.addView(drawingBoard, drawLp);
         drawingBoard.bringToFront();
+        cameraFrameView = new ImageView(this);
+        cameraFrameView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        cameraFrameView.setBackgroundColor(0xFF05070D);
+        cameraFrameView.setVisibility(View.GONE);
+        root.addView(cameraFrameView, new FrameLayout.LayoutParams(-1, -1));
         setContentView(root);
         applySavedWallpaper();
     }
@@ -425,6 +432,14 @@ public final class CosmicHomeActivity extends Activity {
             if (drawingBoard != null) drawingBoard.endStroke();
         } else if ("stroke_cancel".equals(type)) {
             if (drawingBoard != null) drawingBoard.clearDrawing();
+        } else if ("camera_frame".equals(type)) {
+            try {
+                byte[] bytes = Base64.getDecoder().decode(command.getString("jpeg"));
+                Bitmap frame = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                if (frame != null && cameraFrameView != null) { cameraFrameView.setImageBitmap(frame); cameraFrameView.setVisibility(View.VISIBLE); cameraFrameView.bringToFront(); }
+            } catch (Exception ignored) { }
+        } else if ("camera_stop".equals(type)) {
+            if (cameraFrameView != null) cameraFrameView.setVisibility(View.GONE);
         }
     }
 
