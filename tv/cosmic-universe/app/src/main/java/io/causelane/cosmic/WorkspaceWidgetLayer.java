@@ -113,9 +113,11 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
                     prefs.edit().putInt("theme", which).apply();
                 }).show());
         toolbar.addView(theme);
-        Button analysis = toolButton("AI Analysis");
-        analysis.setOnClickListener(v -> showLocalAnalysis());
-        toolbar.addView(analysis);
+        Button voiceHelp = toolButton("Voice Help");
+        voiceHelp.setOnClickListener(v -> new AlertDialog.Builder(context).setTitle("Nexora Voice Assistant")
+                .setMessage("Open Nexora Remote on your phone, connect to this TV, then tap VOICE. Try: open YouTube, open Netflix, volume up/down, mute, home, back, show workspace, set beach wallpaper, show Tamil news, or open settings. Commands are transcribed on the phone and executed locally by Nexora. No cloud AI account is required. Android limits some system-wide controls.")
+                .setPositiveButton("OK", null).show());
+        toolbar.addView(voiceHelp);
         Button reminder = toolButton("Reminder");
         reminder.setOnClickListener(v -> promptText("Reminder delay in minutes", "15", delayText -> {
             try {
