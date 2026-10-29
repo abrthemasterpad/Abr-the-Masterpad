@@ -140,6 +140,7 @@ public final class MainActivity extends AppCompatActivity {
         addMode(modes, "DRAW", "draw");
         addMode(modes, "KEYS", "keys");
         addMode(modes, "VOICE", "voice");
+        addMode(modes, "CAM", "camera");
         root.addView(modes);
 
         ScrollView scroller = new ScrollView(this);
@@ -192,6 +193,16 @@ public final class MainActivity extends AppCompatActivity {
             Button clear = button("CLEAR TV DRAWING");
             clear.setOnClickListener(v -> send("stroke_cancel"));
             panel.addView(clear);
+        } else if ("camera".equals(mode)) {
+            panel.addView(hint("Optional camera-to-TV stream. Frames are sent only to your paired TV over local Wi-Fi."));
+            Button start = button("START CAMERA STREAM");
+            start.setOnClickListener(v -> {
+                if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
+                else startCameraSurface();
+            });
+            panel.addView(start);
+            Button stop = button("STOP CAMERA STREAM");
+            stop.setOnClickListener(v -> stopCameraStream(true)); panel.addView(stop);
         } else if ("keys".equals(mode)) {
             panel.addView(hint("Text is sent to the launcher to filter app labels. It does not type into arbitrary third-party apps."));
             textField = field("Search TV apps…");
