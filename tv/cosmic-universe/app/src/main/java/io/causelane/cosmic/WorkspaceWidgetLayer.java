@@ -1,6 +1,10 @@
 package io.causelane.cosmic;
 
 import android.app.AlertDialog;
+import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
+import android.widget.ImageView;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
@@ -36,6 +40,8 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
     private final TextView clock;
     private int noteCount = 0;
     private int todoCount = 0;
+    private int imageCount = 0;
+    public static final int REQUEST_PICK_IMAGE = 7831;
     private float downX, downY, startX, startY;
     private View moving;
     private final Runnable clockTick = new Runnable() {
@@ -78,6 +84,25 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
             save();
         }));
         toolbar.addView(addTodo);
+        Button addImage = toolButton("+ Image");
+        addImage.setOnClickListener(v -> {
+            Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            pick.addCategory(Intent.CATEGORY_OPENABLE);
+            pick.setType("image/*");
+            pick.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+            if (context instanceof Activity) ((Activity) context).startActivityForResult(pick, REQUEST_PICK_IMAGE);
+        });
+        toolbar.addView(addImage);
+        Button theme = toolButton("Theme");
+        theme.setOnClickListener(v -> new AlertDialog.Builder(context).setTitle("Workspace theme")
+                .setItems(new String[]{"Ocean glass", "Sunset", "Forest", "Bright paper"}, (d, which) -> {
+                    int bg = new int[]{0xCC10172D,0xCC3D1E36,0xCC153C35,0xEEF5F7FA}[which];
+                    toolbar.setBackground(panel(bg, 0x667C91D8));
+                    clock.setBackground(panel(bg, 0x667C91D8));
+                    clock.setTextColor(which == 3 ? 0xFF17344A : Color.WHITE);
+                    prefs.edit().putInt("theme", which).apply();
+                }).show());
+        toolbar.addView(theme);
         Button reset = toolButton("Reset layout");
         reset.setOnClickListener(v -> new AlertDialog.Builder(context).setTitle("Reset workspace?")
                 .setMessage("Remove the current notes and tasks from this TV?")
@@ -139,6 +164,31 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
                 }).show();
     }
 
+    public void onImagePicked(Uri uri) {
+        if (uri == null) return;
+        try { context.getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) { }
+        addImageCard(uri.toString(), dp(770), dp(115) + imageCount * dp(20), true);
+        imageCount++;
+    }
+
+    private void addImageCard(String uriText, int x, int y, boolean persist) {
+        LinearLayout card = cardShell(0xEE142039, 0xFF5E87D8);
+        JSONObject model = new JSONObject();
+        try { model.put("type", "image"); model.put("uri", uriText); } catch (Exception ignored) { }
+        card.setTag(model);
+        TextView title = label("IMAGE MAGNET", 10, 0xFFB6D4FF);
+        title.setTypeface(Typeface.DEFAULT_BOLD); card.addView(title);
+        ImageView image = new ImageView(context); image.setAdjustViewBounds(true);
+        image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        try { image.setImageURI(Uri.parse(uriText)); } catch (Exception ignored) { }
+        card.addView(image, new LinearLayout.LayoutParams(-1, dp(125)));
+        LinearLayout actions = new LinearLayout(context); actions.setGravity(Gravity.RIGHT);
+        Button resize = tinyButton("Resize");
+        resize.setOnClickListener(v -> { ViewGroup.LayoutParams lp = card.getLayoutParams(); lp.width = lp.width < dp(300) ? dp(340) : lp.width < dp(400) ? dp(430) : dp(230); card.setLayoutParams(lp); save(); });
+        Button delete = tinyButton("×"); delete.setOnClickListener(v -> { removeView(card); save(); });
+        actions.addView(resize); actions.addView(delete); card.addView(actions);
+        placeCard(card, x, y); if (persist) save();
+    }
     private void addNoteCard(String text, int x, int y, boolean persist) {
         LinearLayout card = cardShell(0xFFEADFA8, 0xFF6F6335);
         JSONObject model = new JSONObject(); try { model.put("type", "note"); model.put("text", text); } catch (Exception ignored) { } card.setTag(model);
@@ -248,6 +298,8 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
                 int x = o.optInt("x", dp(240)), y = o.optInt("y", dp(110));
                 if ("todo".equals(o.optString("type"))) {
                     addTodoCard(o.optString("text", ""), x, y, o.optBoolean("done", false)); todoCount++;
+                } else if ("image".equals(o.optString("type"))) {
+                    addImageCard(o.optString("uri", ""), x, y, false); imageCount++;
                 } else {
                     addNoteCard(o.optString("text", ""), x, y, false); noteCount++;
                 }
