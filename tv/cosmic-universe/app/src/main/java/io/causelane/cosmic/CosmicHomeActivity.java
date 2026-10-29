@@ -1,6 +1,7 @@
 package io.causelane.cosmic;
 
 import android.app.Activity;
+import android.media.AudioManager;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
@@ -386,25 +387,40 @@ public final class CosmicHomeActivity extends Activity {
     private void handleVoiceCommand(String raw) {
         String q = raw == null ? "" : raw.trim().toLowerCase(java.util.Locale.ROOT);
         if (q.isEmpty()) return;
-        if (q.contains("workspace") || q.contains("notes") || q.contains("todo") || q.contains("tasks")) {
+        // Local voice-command router: speech is transcribed on the paired phone; commands are executed here.
+        if (q.equals("home") || q.equals("go home") || q.equals("launcher")) {
+            try { Intent home = new Intent(Intent.ACTION_MAIN); home.addCategory(Intent.CATEGORY_HOME); home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(home); } catch (Exception ignored) { filterApps(""); }
+            return;
+        }
+        if (q.equals("back") || q.equals("go back") || q.equals("close this") || q.equals("close app")) { onBackPressed(); return; }
+        if (q.contains("show workspace") || q.contains("open workspace") || q.contains("notes") || q.contains("todo") || q.contains("tasks")) {
             workspace.setVisibility(View.VISIBLE); workspace.bringToFront(); workspace.requestFocus(); return;
         }
-        if (q.contains("wallpaper") || q.contains("background")) { showWallpaperPicker(); return; }
-        if (q.contains("prayer") || q.contains("news") || q.contains("headlines")) { startActivity(new Intent(this, InfoReaderActivity.class)); return; }
-        if (q.contains("volume up") || q.contains("increase volume") || q.contains("louder")) {
-            dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_VOLUME_UP));
-            dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_VOLUME_UP)); return;
+        if (q.contains("hide workspace") || q.contains("close workspace")) { if(workspace!=null)workspace.setVisibility(View.GONE); return; }
+        if (q.contains("new note") || q.contains("create note") || q.contains("add note")) {
+            workspace.setVisibility(View.VISIBLE); workspace.bringToFront(); workspace.requestFocus();
+            new AlertDialog.Builder(this).setTitle("Voice command").setMessage("Use + Note in the workspace to enter the note text.").setPositiveButton("Open workspace",(d,w)->{}).show(); return;
         }
-        if (q.contains("volume down") || q.contains("decrease volume") || q.contains("quieter")) {
-            dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_VOLUME_DOWN));
-            dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_VOLUME_DOWN)); return;
+        if (q.contains("wallpaper") || q.contains("background") || q.contains("change theme")) { showWallpaperPicker(); return; }
+        if (q.contains("prayer") || q.contains("news") || q.contains("headlines") || q.contains("newspaper")) { startActivity(new Intent(this, InfoReaderActivity.class)); return; }
+        if (q.contains("mute")) { AudioManager audio=(AudioManager)getSystemService(AUDIO_SERVICE); if(audio!=null)audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_MUTE,0); return; }
+        if (q.contains("unmute")) { AudioManager audio=(AudioManager)getSystemService(AUDIO_SERVICE); if(audio!=null)audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_UNMUTE,0); return; }
+        if (q.contains("volume up") || q.contains("increase volume") || q.contains("louder")) { AudioManager a=(AudioManager)getSystemService(AUDIO_SERVICE); if(a!=null)a.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_RAISE,AudioManager.FLAG_SHOW_UI); return; }
+        if (q.contains("volume down") || q.contains("decrease volume") || q.contains("quieter")) { AudioManager a=(AudioManager)getSystemService(AUDIO_SERVICE); if(a!=null)a.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_LOWER,AudioManager.FLAG_SHOW_UI); return; }
+        if (q.contains("settings")) { try { startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS)); } catch(Exception ignored){} return; }
+        if (q.contains("search") || q.contains("find app") || q.contains("show all apps") || q.contains("clear search")) {
+            String term=q.replaceFirst("^(search|search for|find app|find|show me)\\s+","").trim();
+            if(q.contains("show all apps")||q.contains("clear search"))term="";
+            filterApps(term); return;
         }
-        if (q.equals("back") || q.equals("go back")) { onBackPressed(); return; }
-        if (q.contains("show all apps") || q.contains("clear search") || q.equals("home")) { filterApps(""); return; }
-        String search = q.replaceFirst("^(open|launch|start|find|search for|show me)\\s+", "").trim();
+        String search = q.replaceFirst("^(open|launch|start|play|watch|switch to|go to|find|search for|show me)\\s+", "").trim();
+        if (search.equals("youtube") || search.equals("netflix") || search.equals("prime video") || search.equals("play store") || search.equals("settings")) {
+            // Match the actual installed activity label; never assume an app exists.
+        }
         for (View tile : appTiles) {
             CharSequence label = tile.getContentDescription();
-            if (label != null && label.toString().toLowerCase(java.util.Locale.ROOT).contains(search)) {
+            if (label != null && (label.toString().toLowerCase(java.util.Locale.ROOT).contains(search)
+                    || search.contains(label.toString().toLowerCase(java.util.Locale.ROOT)))) {
                 tile.setVisibility(View.VISIBLE); tile.requestFocus(); tile.performClick(); return;
             }
         }
