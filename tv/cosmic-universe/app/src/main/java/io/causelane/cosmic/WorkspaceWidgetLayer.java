@@ -248,7 +248,7 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
         LinearLayout actions = new LinearLayout(context); actions.setGravity(Gravity.RIGHT);
         Button resize = tinyButton("Resize");
         resize.setOnClickListener(v -> { rememberUndo(); ViewGroup.LayoutParams lp = card.getLayoutParams(); lp.width = lp.width < dp(300) ? dp(340) : lp.width < dp(400) ? dp(430) : dp(230); card.setLayoutParams(lp); save(); });
-        Button delete = tinyButton("×"); delete.setOnClickListener(v -> { removeView(card); save(); });
+        Button delete = tinyButton("×"); delete.setOnClickListener(v -> { rememberUndo(); removeView(card); save(); });
         actions.addView(resize); actions.addView(delete); card.addView(actions);
         placeCard(card, x, y); if (persist) save();
     }
@@ -312,13 +312,12 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
 
     private void addResizeAction(View card, LinearLayout actions) {
         Button resize = tinyButton("Size");
-        resize.setOnClickListener(v -> {
-            rememberUndo();
-            ViewGroup.LayoutParams lp = card.getLayoutParams();
-            int current = lp.width;
-            lp.width = current < dp(270) ? dp(300) : current < dp(350) ? dp(380) : dp(230);
-            card.setLayoutParams(lp); save();
-        });
+        resize.setOnClickListener(v -> new AlertDialog.Builder(context).setTitle("Card size")
+                .setItems(new String[]{"Compact","Standard","Wide","Extra wide"},(dialog,which)->{
+                    rememberUndo();
+                    ViewGroup.LayoutParams lp=card.getLayoutParams();
+                    int[] widths={190,230,310,390}; lp.width=dp(widths[which]); card.setLayoutParams(lp); save();
+                }).show());
         actions.addView(resize);
     }
     private LinearLayout cardShell(int color, int stroke) {
