@@ -283,6 +283,26 @@ public final class CosmicHomeActivity extends Activity {
     }
 
 
+    private int themedIconForLabel(String label) {
+        String resource = null;
+        if (label.contains("setting")) resource = "icon_settings";
+        else if (label.contains("file") || label.contains("manager") || label.contains("storage")) resource = "icon_files";
+        else if (label.contains("gallery") || label.contains("photo") || label.contains("image")) resource = "icon_gallery";
+        else if (label.contains("camera")) resource = "icon_camera";
+        else if (label.contains("music") || label.contains("audio")) resource = "icon_music";
+        else if (label.contains("calculator")) resource = "icon_calculator";
+        else if (label.contains("clock") || label.contains("alarm")) resource = "icon_clock";
+        else if (label.contains("weather")) resource = "icon_weather";
+        else if (label.contains("note")) resource = "icon_notes";
+        else if (label.contains("task") || label.contains("todo")) resource = "icon_tasks";
+        else if (label.contains("browser") || label.equals("internet") || label.contains("chrome")) resource = "icon_browser";
+        else if (label.contains("bluetooth")) resource = "icon_bluetooth";
+        else if (label.contains("game")) resource = "icon_games";
+        else if (label.contains("news")) resource = "icon_news";
+        else if (label.contains("calendar")) resource = "icon_calendar";
+        else if (label.equals("apps") || label.contains("app drawer")) resource = "icon_apps";
+        return resource == null ? 0 : getResources().getIdentifier(resource, "drawable", getPackageName());
+    }
     private void startRemoteServer() {
         try {
             pairingKey = new byte[32];
@@ -432,7 +452,9 @@ public final class CosmicHomeActivity extends Activity {
 
         // Actual installed-app icon sits inside a planet-like orb.
         ImageView appIcon = new ImageView(this);
-        appIcon.setImageDrawable(info.loadIcon(getPackageManager()));
+        int themedIcon = themedIconForLabel(String.valueOf(info.loadLabel(getPackageManager())).toLowerCase(java.util.Locale.ROOT));
+        if (themedIcon != 0) appIcon.setImageResource(themedIcon);
+        else appIcon.setImageDrawable(info.loadIcon(getPackageManager()));
         appIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
         FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(dp(34), dp(34), Gravity.CENTER);
         planet.addView(appIcon, iconLp);
