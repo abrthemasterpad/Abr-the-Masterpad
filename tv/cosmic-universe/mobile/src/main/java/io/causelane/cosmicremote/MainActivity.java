@@ -224,6 +224,51 @@ public final class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void startCameraSurface() {
+        if (cameraSurface != null) return;
+        cameraStreamActive = true; cameraSurface = new SurfaceView(this);
+        panel.addView(cameraSurface, new LinearLayout.LayoutParams(-1, dp(300)));
+        cameraSurface.getHolder().addCallback(new SurfaceHolder.Callback() {
+            @Override public void surfaceCreated(SurfaceHolder holder) {
+                try { camera = Camera.open(); camera.setDisplayOrientation(90); camera.setPreviewDisplay(holder); camera.startPreview(); scheduleCameraFrame(); status.setText("Camera stream active on paired TV."); }
+                catch (Exception e) { status.setText("Camera could not start: " + e.getClass().getSimpleName()); stopCameraStream(true); }
+            }
+            @Override public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) { }
+            @Override public void surfaceDestroyed(SurfaceHolder holder) { releaseCamera(); }
+        });
+    }
+    private void scheduleCameraFrame() {
+        cameraHandler.postDelayed(() -> {
+            if (!cameraStreamActive || camera == null) return;
+            try { camera.takePicture(null, null, (data, activeCamera) -> {
+                try {
+                    Bitmap original = BitmapFactory.decodeByteArray(data, 0, data.length);
+                    if (original != null) {
+                        int w = 320; int h = Math.max(1, original.getHeight() * w / original.getWidth());
+                        Bitmap scaled = Bitmap.createScaledBitmap(original, w, h, true);
+                        ByteArrayOutputStream out = new ByteArrayOutputStream(); scaled.compress(Bitmap.CompressFormat.JPEG, 42, out);
+                        JSONObject command = new JSONObject(); command.put("type", "camera_frame"); command.put("jpeg", Base64.getEncoder().encodeToString(out.toByteArray())); send(command);
+                        if (scaled != original) scaled.recycle(); original.recycle();
+                    }
+                } catch (Exception ignored) { }
+                if (cameraStreamActive && camera != null) { try { camera.startPreview(); } catch (Exception ignored) { } scheduleCameraFrame(); }
+            }); } catch (Exception e) { status.setText("Camera stream paused."); stopCameraStream(true); }
+        }, 1400);
+    }
+    private void releaseCamera() {
+        cameraHandler.removeCallbacksAndMessages(null);
+        if (camera != null) { try { camera.stopPreview(); } catch (Exception ignored) { } try { camera.release(); } catch (Exception ignored) { } camera = null; }
+    }
+    private void stopCameraStream(boolean notifyTv) {
+        cameraStreamActive = false; cameraHandler.removeCallbacksAndMessages(null); releaseCamera(); cameraSurface = null;
+        if (notifyTv && client != null && client.isOpen()) send("camera_stop");
+        if (status != null) status.setText("Camera stream stopped.");
+    }
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_CAMERA_PERMISSION && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) startCameraSurface();
+        else if (requestCode == REQUEST_CAMERA_PERMISSION) status.setText("Camera permission is required to stream.");
+    }
     private void addKeyRow(String label, String key) {
         Button b = button(label);
         b.setOnClickListener(v -> sendKey(key));
@@ -376,6 +421,7 @@ public final class MainActivity extends AppCompatActivity {
     private int dp(int n) { return (int)(n * getResources().getDisplayMetrics().density + 0.5f); }
 
     @Override protected void onDestroy() {
+        stopCameraStream(true);
         if (client != null) client.close();
         super.onDestroy();
     }
