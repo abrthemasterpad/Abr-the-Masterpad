@@ -79,6 +79,7 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
         toolbar.addView(brand, new LinearLayout.LayoutParams(-2, -2));
         Button addNote = toolButton("+ Note");
         addNote.setOnClickListener(v -> promptText("New sticky note", "", text -> {
+            rememberUndo();
             addNoteCard(text, dp(245), dp(100) + noteCount * dp(20), true);
             noteCount++;
             save();
@@ -86,6 +87,7 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
         toolbar.addView(addNote);
         Button addTodo = toolButton("+ Todo");
         addTodo.setOnClickListener(v -> promptText("New task", "", text -> {
+            rememberUndo();
             addTodoCard(text, dp(510), dp(100) + todoCount * dp(20), false);
             todoCount++;
             save();
@@ -93,6 +95,7 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
         toolbar.addView(addTodo);
         Button addImage = toolButton("+ Image");
         addImage.setOnClickListener(v -> {
+            rememberUndo();
             Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             pick.addCategory(Intent.CATEGORY_OPENABLE);
             pick.setType("image/*");
@@ -244,7 +247,7 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
         card.addView(image, new LinearLayout.LayoutParams(-1, dp(125)));
         LinearLayout actions = new LinearLayout(context); actions.setGravity(Gravity.RIGHT);
         Button resize = tinyButton("Resize");
-        resize.setOnClickListener(v -> { ViewGroup.LayoutParams lp = card.getLayoutParams(); lp.width = lp.width < dp(300) ? dp(340) : lp.width < dp(400) ? dp(430) : dp(230); card.setLayoutParams(lp); save(); });
+        resize.setOnClickListener(v -> { rememberUndo(); ViewGroup.LayoutParams lp = card.getLayoutParams(); lp.width = lp.width < dp(300) ? dp(340) : lp.width < dp(400) ? dp(430) : dp(230); card.setLayoutParams(lp); save(); });
         Button delete = tinyButton("×"); delete.setOnClickListener(v -> { removeView(card); save(); });
         actions.addView(resize); actions.addView(delete); card.addView(actions);
         placeCard(card, x, y); if (persist) save();
@@ -260,6 +263,7 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
         card.addView(body);
         Button edit = tinyButton("Edit");
         edit.setOnClickListener(v -> promptText("Edit note", body.getText().toString(), updated -> {
+            rememberUndo();
             body.setText(updated); try { ((JSONObject)card.getTag()).put("text", updated); } catch (Exception ignored) { } save();
         }));
         Button delete = tinyButton("×");
@@ -281,6 +285,7 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
         Button toggle = tinyButton((done ? "✓  " : "○  ") + text);
         toggle.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
         toggle.setOnClickListener(v -> {
+            rememberUndo();
             boolean checked = !toggle.getText().toString().startsWith("✓");
             toggle.setText((checked ? "✓  " : "○  ") + text);
             toggle.setAlpha(checked ? 0.55f : 1f);
@@ -290,6 +295,7 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
         card.addView(toggle);
         Button edit = tinyButton("Edit");
         edit.setOnClickListener(v -> promptText("Edit task", text, updated -> {
+            rememberUndo();
             toggle.setText((toggle.getText().toString().startsWith("✓") ? "✓  " : "○  ") + updated);
             try { ((JSONObject) card.getTag()).put("text", updated); } catch (Exception ignored) { }
             save();
@@ -307,6 +313,7 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
     private void addResizeAction(View card, LinearLayout actions) {
         Button resize = tinyButton("Size");
         resize.setOnClickListener(v -> {
+            rememberUndo();
             ViewGroup.LayoutParams lp = card.getLayoutParams();
             int current = lp.width;
             lp.width = current < dp(270) ? dp(300) : current < dp(350) ? dp(380) : dp(230);
@@ -328,6 +335,7 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
         card.setOnTouchListener((v, event) -> {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
+                    rememberUndo();
                     moving = v; downX = event.getRawX(); downY = event.getRawY();
                     startX = v.getX(); startY = v.getY(); return true;
                 case MotionEvent.ACTION_MOVE:
