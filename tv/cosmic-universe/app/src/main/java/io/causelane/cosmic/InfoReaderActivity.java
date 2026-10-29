@@ -38,7 +38,7 @@ public final class InfoReaderActivity extends Activity {
         country = new EditText(this); country.setSingleLine(true); country.setText("India"); country.setHint("Country"); country.setTextColor(Color.WHITE); country.setHintTextColor(0xFF9FB1D9); country.setBackgroundColor(0xFF1B2948); root.addView(country);
         LinearLayout actions = new LinearLayout(this); actions.setOrientation(LinearLayout.HORIZONTAL);
         Button prayer = button("Prayer Times"); prayer.setOnClickListener(v -> loadPrayer()); actions.addView(prayer, new LinearLayout.LayoutParams(0, dp(52), 1));
-        Button news = button("Tamil News"); news.setOnClickListener(v -> loadNews()); actions.addView(news, new LinearLayout.LayoutParams(0, dp(52), 1)); root.addView(actions);
+        Button news = button("Choose News"); news.setOnClickListener(v -> chooseNewsFeed()); actions.addView(news, new LinearLayout.LayoutParams(0, dp(52), 1)); root.addView(actions);
         ScrollView scroll = new ScrollView(this); output = new TextView(this); output.setText("Choose Prayer Times for the selected city, or load current Tamil headlines.\\n\\nPublic data sources; no paid API key or account required."); output.setTextColor(0xFFE5ECFF); output.setTextSize(17); output.setPadding(dp(10), dp(16), dp(10), dp(16)); scroll.addView(output); root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         Button back = button("Back to workspace"); back.setOnClickListener(v -> finish()); root.addView(back); setContentView(root);
     }
@@ -61,21 +61,29 @@ public final class InfoReaderActivity extends Activity {
             String shown = result; runOnUiThread(() -> output.setText(shown));
         }).start();
     }
-    private void loadNews() {
-        output.setText("Loading Tamil headlines…");
+    private void chooseNewsFeed() {
+        new android.app.AlertDialog.Builder(this).setTitle("Choose a news region")
+                .setItems(new String[]{"Tamil News", "India News", "World News"}, (dialog, which) -> {
+                    if (which == 0) loadNews("Tamil News", "https://feeds.bbci.co.uk/tamil/rss.xml");
+                    else if (which == 1) loadNews("India News", "https://feeds.bbci.co.uk/news/world/asia/india/rss.xml");
+                    else loadNews("World News", "https://feeds.bbci.co.uk/news/world/rss.xml");
+                }).show();
+    }
+    private void loadNews(String region, String feedUrl) {
+        output.setText("Loading " + region + " headlines…");
         new Thread(() -> {
             HttpURLConnection conn = null; String result;
             try {
-                conn = (HttpURLConnection) new URL("https://feeds.bbci.co.uk/tamil/rss.xml").openConnection(); conn.setConnectTimeout(8000); conn.setReadTimeout(8000); conn.setRequestProperty("User-Agent", "NexoraTV/0.4");
+                conn = (HttpURLConnection) new URL(feedUrl).openConnection(); conn.setConnectTimeout(8000); conn.setReadTimeout(8000); conn.setRequestProperty("User-Agent", "NexoraTV/0.4");
                 XmlPullParser parser = XmlPullParserFactory.newInstance().newPullParser(); parser.setInput(conn.getInputStream(), "UTF-8");
-                StringBuilder text = new StringBuilder("TAMIL NEWS · PUBLIC RSS\\n\\n"); boolean item = false; String headline = ""; int count = 0;
+                StringBuilder text = new StringBuilder(region.toUpperCase(java.util.Locale.ROOT) + " · PUBLIC RSS\\n\\n"); boolean item = false; String headline = ""; int count = 0;
                 for (int event = parser.getEventType(); event != XmlPullParser.END_DOCUMENT && count < 15; event = parser.next()) {
                     if (event == XmlPullParser.START_TAG && "item".equals(parser.getName())) { item = true; headline = ""; }
                     else if (event == XmlPullParser.START_TAG && item && "title".equals(parser.getName())) headline = parser.nextText();
                     else if (event == XmlPullParser.END_TAG && "item".equals(parser.getName()) && item) { text.append("• ").append(headline.trim()).append("\\n\\n"); count++; item = false; }
                 }
-                text.append("\\nSource: BBC News Tamil RSS. Headlines are fetched live; article availability and feed uptime depend on the publisher."); result = text.toString();
-            } catch (Exception e) { result = "Tamil news feed could not be reached. Check internet access and try again.\\n\\nSource: BBC News Tamil RSS."; }
+                text.append("\\nSource: BBC public RSS. Headlines are fetched live; article availability and feed uptime depend on the publisher."); result = text.toString();
+            } catch (Exception e) { result = region + " feed could not be reached. Check internet access and try again.\\n\\nSource: BBC public RSS."; }
             finally { if (conn != null) conn.disconnect(); }
             String shown = result; runOnUiThread(() -> output.setText(shown));
         }).start();
