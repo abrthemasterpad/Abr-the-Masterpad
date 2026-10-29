@@ -56,6 +56,7 @@ public final class CosmicHomeActivity extends Activity {
     private RemoteControlServer remoteServer;
     private WorkspaceWidgetLayer workspace;
     private TextView pairingStatus;
+    private String pairingDetails = "Waiting for TV network…";
     private LinearLayout pairPanel;
     private final List<View> appTiles = new ArrayList<>();
     private byte[] pairingKey;
@@ -233,7 +234,7 @@ public final class CosmicHomeActivity extends Activity {
                 }
                 @Override public void onPeerCountChanged(int count) {
                     runOnUiThread(() -> {
-                        if (pairingStatus != null) pairingStatus.setText(count > 0 ? "Phone connected\nRemote + drawing active" : "Scan to pair\nSame Wi-Fi · local only");
+                        if (pairingStatus != null) pairingStatus.setText(count > 0 ? "PHONE CONNECTED\nRemote + drawing active" : pairingDetails);
                     });
                 }
             });
@@ -250,7 +251,8 @@ public final class CosmicHomeActivity extends Activity {
                 View found = root.findViewWithTag("pairing-qr");
                 if (found instanceof ImageView) ((ImageView) found).setImageBitmap(bitmap);
             }
-            if (pairingStatus != null) pairingStatus.setText("SCAN TO PAIR\nSame Wi-Fi\nNo account / cloud");
+            pairingDetails = "TV: " + host + "\nPort: 8765\nPairing key:\n" + key + "\nSame Wi-Fi only";
+            if (pairingStatus != null) pairingStatus.setText(pairingDetails);
         } catch (Exception e) {
             if (pairingStatus != null) pairingStatus.setText("Remote unavailable\n" + e.getClass().getSimpleName());
         }
