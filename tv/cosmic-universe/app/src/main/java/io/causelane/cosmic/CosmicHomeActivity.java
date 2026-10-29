@@ -401,7 +401,18 @@ public final class CosmicHomeActivity extends Activity {
             workspace.setVisibility(View.VISIBLE); workspace.bringToFront(); workspace.requestFocus();
             new AlertDialog.Builder(this).setTitle("Voice command").setMessage("Use + Note in the workspace to enter the note text.").setPositiveButton("Open workspace",(d,w)->{}).show(); return;
         }
+        if (q.contains("set wallpaper") || q.contains("use wallpaper") || q.contains("wallpaper to")) {
+            String[] names={"mountain sunrise","beach","rain","rainy","snow","winter","autumn","city night","lion","wildlife","lotus","sunflower","summer","abstract"};
+            int[] indices={1,2,3,3,4,4,5,6,7,7,8,9,9,10};
+            for(int i=0;i<names.length;i++) if(q.contains(names[i])) { applyWallpaper(indices[i]); getSharedPreferences("nexora_settings",MODE_PRIVATE).edit().putInt("wallpaper_index",indices[i]).apply(); return; }
+            showWallpaperPicker(); return;
+        }
         if (q.contains("wallpaper") || q.contains("background") || q.contains("change theme")) { showWallpaperPicker(); return; }
+        if (q.contains("select") || q.contains("open selected") || q.contains("press ok")) { View focused=getCurrentFocus(); if(focused!=null)focused.performClick(); return; }
+        if (q.contains("move right") || q.equals("right")) { View focused=getCurrentFocus(); if(focused!=null){View next=focused.focusSearch(View.FOCUS_RIGHT);if(next!=null)next.requestFocus();} return; }
+        if (q.contains("move left") || q.equals("left")) { View focused=getCurrentFocus(); if(focused!=null){View next=focused.focusSearch(View.FOCUS_LEFT);if(next!=null)next.requestFocus();} return; }
+        if (q.contains("move up") || q.equals("up")) { View focused=getCurrentFocus(); if(focused!=null){View next=focused.focusSearch(View.FOCUS_UP);if(next!=null)next.requestFocus();} return; }
+        if (q.contains("move down") || q.equals("down")) { View focused=getCurrentFocus(); if(focused!=null){View next=focused.focusSearch(View.FOCUS_DOWN);if(next!=null)next.requestFocus();} return; }
         if (q.contains("prayer") || q.contains("news") || q.contains("headlines") || q.contains("newspaper")) { startActivity(new Intent(this, InfoReaderActivity.class)); return; }
         if (q.contains("mute")) { AudioManager audio=(AudioManager)getSystemService(AUDIO_SERVICE); if(audio!=null)audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_MUTE,0); return; }
         if (q.contains("unmute")) { AudioManager audio=(AudioManager)getSystemService(AUDIO_SERVICE); if(audio!=null)audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_UNMUTE,0); return; }
