@@ -250,11 +250,17 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
             int x=left+col*(cardWidth+gap); int y=top+row*dp(190); v.setX(x);v.setY(y); col++; if(col>=3){col=0;row++;} } save();
     }
     private void layerMenu() {
+        View selected = null;
+        View focused = ((Activity) context).getCurrentFocus();
+        while (focused != null && focused != this) {
+            if (focused.getTag() instanceof JSONObject) { selected = focused; break; }
+            if (!(focused.getParent() instanceof View)) break;
+            focused = (View) focused.getParent();
+        }
+        final View target = selected;
+        if (target == null) { new AlertDialog.Builder(context).setMessage("Focus a note, task or image card before opening Layer.").setPositiveButton("OK",null).show(); return; }
         new AlertDialog.Builder(context).setTitle("Selected card layer").setItems(new String[]{"Bring to front","Send to back"},(d,which)->{
-            View selected=null;
-            for(int i=0;i<getChildCount();i++){View candidate=getChildAt(i);if(candidate.getTag() instanceof JSONObject && candidate.hasFocus()){selected=candidate;break;}}
-            if(selected==null){new AlertDialog.Builder(context).setMessage("Focus a note, task or image card first.").setPositiveButton("OK",null).show();return;}
-            rememberUndo(); if(which==0)selected.bringToFront();else {removeView(selected);addView(selected,0);} save();
+            rememberUndo(); if(which==0)target.bringToFront();else {removeView(target);addView(target,0);} save();
         }).setNegativeButton("Cancel",null).show();
     }
     private void showLocalAnalysis() {
@@ -320,7 +326,7 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
             body.setText(updated); try { ((JSONObject)card.getTag()).put("text", updated); } catch (Exception ignored) { } save();
         }));
         Button delete = tinyButton("×");
-        delete.setOnClickListener(v -> { removeView(card); save(); });
+        delete.setOnClickListener(v -> { rememberUndo(); removeView(card); save(); });
         LinearLayout actions = new LinearLayout(context);
         actions.setGravity(Gravity.RIGHT);
         actions.addView(edit); addResizeAction(card, actions); actions.addView(delete);
