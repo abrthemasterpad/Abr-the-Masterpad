@@ -398,7 +398,7 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
                 View v = getChildAt(i);
                 if (!(v instanceof LinearLayout) || v == cards || v.getTag() == null) continue;
                 JSONObject o = (JSONObject)v.getTag();
-                o.put("x", (int)v.getX()); o.put("y", (int)v.getY());
+                o.put("x", (int)v.getX()); o.put("y", (int)v.getY()); o.put("width", v.getWidth());
                 arr.put(o);
             }
             // Card tags are the canonical, versioned local workspace model.
