@@ -195,6 +195,18 @@ public final class CosmicHomeActivity extends Activity {
         root.addView(cameraFrameView, new FrameLayout.LayoutParams(-1, -1));
         setContentView(root);
         applySavedWallpaper();
+        // The wallpaper tracks real Android focus, including D-pad and paired-phone navigation.
+        root.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
+            if (sky == null || newFocus == null || sky.getWidth() <= 0 || sky.getHeight() <= 0) return;
+            int[] rootPos = new int[2];
+            int[] focusPos = new int[2];
+            root.getLocationOnScreen(rootPos);
+            newFocus.getLocationOnScreen(focusPos);
+            float centerX = focusPos[0] + newFocus.getWidth() / 2f - rootPos[0];
+            float centerY = focusPos[1] + newFocus.getHeight() / 2f - rootPos[1];
+            sky.setGazeTarget(centerX / Math.max(1f, root.getWidth()),
+                    centerY / Math.max(1f, root.getHeight()));
+        });
     }
 
     private static final String[] WALLPAPER_LABELS = {
