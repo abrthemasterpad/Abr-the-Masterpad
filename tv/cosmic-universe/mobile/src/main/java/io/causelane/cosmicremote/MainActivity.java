@@ -217,7 +217,7 @@ public final class MainActivity extends AppCompatActivity {
             });
             panel.addView(textField);
         } else {
-            panel.addView(hint("Voice input uses Android's installed speech-recognition service. Offline availability depends on the device and language pack."));
+            panel.addView(hint("Speak TV commands in your phone language: open an app, volume up/down, mute, home, back, show workspace, set beach/snow/rain wallpaper, open settings, or show prayer times/news. Uses Android speech recognition; availability depends on your installed language service."));
             Button speak = button("START VOICE INPUT");
             speak.setOnClickListener(v -> startVoice());
             panel.addView(speak);
@@ -322,7 +322,7 @@ public final class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
             intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
             intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
-            intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak a TV app name");
+            intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Control your TV: open YouTube, volume up, show workspace, change wallpaper, show Tamil news, or go back");
             startActivityForResult(intent, REQUEST_VOICE);
         } catch (Exception e) {
             Toast.makeText(this, "No compatible speech-recognition service is available.", Toast.LENGTH_LONG).show();
