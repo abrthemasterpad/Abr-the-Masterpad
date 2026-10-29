@@ -103,6 +103,22 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
                     prefs.edit().putInt("theme", which).apply();
                 }).show());
         toolbar.addView(theme);
+        Button analysis = toolButton("AI Analysis");
+        analysis.setOnClickListener(v -> showLocalAnalysis());
+        toolbar.addView(analysis);
+        Button reminder = toolButton("Reminder");
+        reminder.setOnClickListener(v -> promptText("Reminder delay in minutes", "15", delayText -> {
+            try {
+                int delay = Math.max(1, Math.min(10080, Integer.parseInt(delayText.trim())));
+                promptText("Reminder message", "Check my tasks", message -> {
+                    addNoteCard("REMINDER IN " + delay + " MIN: " + message, dp(245), dp(160) + noteCount * dp(20), true);
+                    noteCount++;
+                    postDelayed(() -> new AlertDialog.Builder(context).setTitle("Nexora Reminder").setMessage(message).setPositiveButton("Dismiss", null).show(), delay * 60000L);
+                    new AlertDialog.Builder(context).setMessage("Reminder saved. The alert runs while Nexora remains open; system alarms after app exit are not yet enabled.").setPositiveButton("OK", null).show();
+                });
+            } catch (NumberFormatException e) { new AlertDialog.Builder(context).setMessage("Enter a delay from 1 to 10080 minutes.").setPositiveButton("OK", null).show(); }
+        }));
+        toolbar.addView(reminder);
         Button reset = toolButton("Reset layout");
         reset.setOnClickListener(v -> new AlertDialog.Builder(context).setTitle("Reset workspace?")
                 .setMessage("Remove the current notes and tasks from this TV?")
@@ -164,6 +180,29 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
                 }).show();
     }
 
+    private void showLocalAnalysis() {
+        int notes = 0, tasks = 0, done = 0, images = 0;
+        StringBuilder pending = new StringBuilder();
+        for (int i = 0; i < getChildCount(); i++) {
+            View view = getChildAt(i);
+            if (!(view.getTag() instanceof JSONObject)) continue;
+            JSONObject item = (JSONObject) view.getTag();
+            String type = item.optString("type");
+            if ("note".equals(type)) notes++;
+            else if ("image".equals(type)) images++;
+            else if ("todo".equals(type)) {
+                tasks++;
+                if (item.optBoolean("done", false)) done++;
+                else pending.append("• ").append(item.optString("text", "Task")).append("\\n");
+            }
+        }
+        String summary = "Nexora local workspace analysis\\n\\nNotes: " + notes + "\\nImages: " + images
+                + "\\nTasks: " + tasks + "\\nCompleted: " + done + "\\nOpen: " + (tasks - done)
+                + "\\n\\nRecommended next action: " + (tasks > done ? "focus on one open task first." : "add a clear next task.")
+                + (pending.length() > 0 ? "\\n\\nOpen tasks:\\n" + pending : "")
+                + "\\n\\nThis analysis runs locally from your saved workspace. It is not a cloud LLM response."; 
+        new AlertDialog.Builder(context).setTitle("AI Analysis").setMessage(summary).setPositiveButton("OK", null).show();
+    }
     public void onImagePicked(Uri uri) {
         if (uri == null) return;
         try { context.getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) { }
