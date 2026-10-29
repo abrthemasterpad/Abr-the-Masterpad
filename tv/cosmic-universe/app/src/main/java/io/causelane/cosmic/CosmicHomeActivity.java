@@ -330,6 +330,7 @@ public final class CosmicHomeActivity extends Activity {
                 @Override public void onPeerCountChanged(int count) {
                     runOnUiThread(() -> {
                         if (pairingStatus != null) pairingStatus.setText(count > 0 ? "PHONE CONNECTED\nRemote + drawing active" : pairingDetails);
+                        if (count == 0 && cameraFrameView != null) cameraFrameView.setVisibility(View.GONE);
                     });
                 }
             });
