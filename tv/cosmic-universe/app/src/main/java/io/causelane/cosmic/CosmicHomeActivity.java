@@ -428,6 +428,13 @@ public final class CosmicHomeActivity extends Activity {
         }
     }
 
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == WorkspaceWidgetLayer.REQUEST_PICK_IMAGE && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            if (workspace != null) workspace.onImagePicked(data.getData());
+        }
+    }
+
     @Override protected void onDestroy() {
         if (remoteServer != null) remoteServer.closeSafely();
         super.onDestroy();
