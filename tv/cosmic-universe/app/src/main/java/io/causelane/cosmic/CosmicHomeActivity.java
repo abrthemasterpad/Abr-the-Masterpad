@@ -110,6 +110,14 @@ public final class CosmicHomeActivity extends Activity {
             workspaceButton.setText(show ? "CLOSE WORKSPACE" : "WORKSPACE");
         });
         header.addView(workspaceButton);
+        TextView voiceControlButton = headerButton("VOICE CONTROL");
+        voiceControlButton.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Enable Nexora Voice Control")
+                .setMessage("To control apps outside Nexora with voice, Android requires you to explicitly enable the Nexora Voice Control accessibility service. This lets spoken commands navigate, click visible controls, scroll, and use home/back/volume. Voice recognition happens on your phone; commands travel over the paired local connection.")
+                .setNegativeButton("Not now", null)
+                .setPositiveButton("Open settings", (d,w) -> { try { startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)); } catch(Exception ignored){} }).show());
+        LinearLayout.LayoutParams voiceLp = new LinearLayout.LayoutParams(-2, -2);
+        voiceLp.leftMargin = dp(8);
+        header.addView(voiceControlButton, voiceLp);
         TextView wallpaperButton = headerButton("WALLPAPERS");
         wallpaperButton.setOnClickListener(v -> showWallpaperPicker());
         LinearLayout.LayoutParams wallpaperLp = new LinearLayout.LayoutParams(-2, -2);
@@ -385,6 +393,7 @@ public final class CosmicHomeActivity extends Activity {
 
     /** Local voice-command router; transcription is supplied by the paired phone. */
     private void handleVoiceCommand(String raw) {
+        if (NexoraAccessibilityService.dispatch(raw)) return;
         String q = raw == null ? "" : raw.trim().toLowerCase(java.util.Locale.ROOT);
         if (q.isEmpty()) return;
         // Local voice-command router: speech is transcribed on the paired phone; commands are executed here.
