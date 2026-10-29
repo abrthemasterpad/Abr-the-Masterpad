@@ -505,6 +505,10 @@ public final class CosmicHomeActivity extends Activity {
         } else if ("camera_frame".equals(type)) {
             try {
                 byte[] bytes = Base64.getDecoder().decode(command.getString("jpeg"));
+                if (bytes.length == 0 || bytes.length > 36000) return;
+                BitmapFactory.Options bounds = new BitmapFactory.Options(); bounds.inJustDecodeBounds = true;
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.length, bounds);
+                if (bounds.outWidth <= 0 || bounds.outHeight <= 0 || bounds.outWidth > 1280 || bounds.outHeight > 720) return;
                 Bitmap frame = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
                 if (frame != null && cameraFrameView != null) { cameraFrameView.setImageBitmap(frame); cameraFrameView.setVisibility(View.VISIBLE); cameraFrameView.bringToFront(); }
             } catch (Exception ignored) { }
