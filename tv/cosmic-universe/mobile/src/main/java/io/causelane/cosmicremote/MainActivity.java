@@ -65,7 +65,7 @@ public final class MainActivity extends AppCompatActivity {
         root.setPadding(dp(18), dp(14), dp(18), dp(12));
 
         TextView brand = new TextView(this);
-        brand.setText("COSMIC REMOTE");
+        brand.setText("NEXORA REMOTE");
         brand.setTextColor(Color.WHITE);
         brand.setTextSize(22);
         brand.setLetterSpacing(0.12f);
@@ -73,7 +73,7 @@ public final class MainActivity extends AppCompatActivity {
         root.addView(brand);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("LOCAL CONTROL SURFACE  ·  NO ACCOUNT");
+        subtitle.setText("PRIVATE LOCAL REMOTE  ·  NO ACCOUNT");
         subtitle.setTextColor(0xFF9DAED8);
         subtitle.setTextSize(10);
         subtitle.setPadding(0, dp(4), 0, dp(12));
