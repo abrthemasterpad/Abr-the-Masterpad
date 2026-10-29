@@ -1,11 +1,15 @@
 package io.causelane.cosmic;
 
 import android.app.Activity;
+import android.media.AudioManager;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
@@ -20,6 +24,21 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.common.BitMatrix;
+
+import org.json.JSONObject;
+
+import java.net.Inet4Address;
+import java.net.NetworkInterface;
+import java.security.SecureRandom;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Base64;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -31,10 +50,23 @@ import java.util.List;
  */
 public final class CosmicHomeActivity extends Activity {
     private CosmicSkyView sky;
+    private ImageView wallpaperView;
+    private ImageView cameraFrameView;
     private GridLayout grid;
     private final List<ResolveInfo> launchables = new ArrayList<>();
     private int tileSize;
     private int columns = 5;
+    private FrameLayout root;
+    private RemoteDrawingView drawingBoard;
+    private RemoteControlServer remoteServer;
+    private WorkspaceWidgetLayer workspace;
+    private TextView pairingStatus;
+    private String pairingDetails = "Waiting for TV network…";
+    private LinearLayout pairPanel;
+    private final List<View> appTiles = new ArrayList<>();
+    private byte[] pairingKey;
+    private float remoteDxAccumulator;
+    private float remoteDyAccumulator;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -44,12 +76,17 @@ public final class CosmicHomeActivity extends Activity {
         tileSize = (int) (getResources().getDisplayMetrics().density * 112);
         buildUi();
         loadApps();
+        startRemoteServer();
     }
 
     private void buildUi() {
-        FrameLayout root = new FrameLayout(this);
+        root = new FrameLayout(this);
         sky = new CosmicSkyView(this);
         root.addView(sky, new FrameLayout.LayoutParams(-1, -1));
+        wallpaperView = new ImageView(this);
+        wallpaperView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        wallpaperView.setVisibility(View.GONE);
+        root.addView(wallpaperView, new FrameLayout.LayoutParams(-1, -1));
 
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -57,15 +94,49 @@ public final class CosmicHomeActivity extends Activity {
         root.addView(content, new FrameLayout.LayoutParams(-1, -1));
 
         TextView title = new TextView(this);
-        title.setText("COSMIC  UNIVERSE");
+        title.setText("NEXORA  TV");
         title.setTextColor(Color.WHITE);
         title.setTextSize(25);
         title.setLetterSpacing(0.12f);
         title.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
-        content.addView(title);
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView workspaceButton = headerButton("WORKSPACE");
+        workspaceButton.setOnClickListener(v -> {
+            boolean show = workspace.getVisibility() != View.VISIBLE;
+            workspace.setVisibility(show ? View.VISIBLE : View.GONE);
+            workspaceButton.setText(show ? "CLOSE WORKSPACE" : "WORKSPACE");
+        });
+        header.addView(workspaceButton);
+        TextView voiceControlButton = headerButton("VOICE CONTROL");
+        voiceControlButton.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Enable Nexora Voice Control")
+                .setMessage("To control apps outside Nexora with voice, Android requires you to explicitly enable the Nexora Voice Control accessibility service. This lets spoken commands navigate, click visible controls, scroll, and use home/back/volume. Voice recognition happens on your phone; commands travel over the paired local connection.")
+                .setNegativeButton("Not now", null)
+                .setPositiveButton("Open settings", (d,w) -> { try { startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)); } catch(Exception ignored){} }).show());
+        LinearLayout.LayoutParams voiceLp = new LinearLayout.LayoutParams(-2, -2);
+        voiceLp.leftMargin = dp(8);
+        header.addView(voiceControlButton, voiceLp);
+        TextView wallpaperButton = headerButton("WALLPAPERS");
+        wallpaperButton.setOnClickListener(v -> showWallpaperPicker());
+        LinearLayout.LayoutParams wallpaperLp = new LinearLayout.LayoutParams(-2, -2);
+        wallpaperLp.leftMargin = dp(8);
+        header.addView(wallpaperButton, wallpaperLp);
+        TextView pairingButton = headerButton("PAIR REMOTE");
+        pairingButton.setOnClickListener(v -> {
+            boolean show = pairPanel.getVisibility() != View.VISIBLE;
+            pairPanel.setVisibility(show ? View.VISIBLE : View.GONE);
+            if (show) pairPanel.bringToFront();
+            pairingButton.setText(show ? "HIDE PAIRING" : "PAIR REMOTE");
+        });
+        LinearLayout.LayoutParams pairingButtonLp = new LinearLayout.LayoutParams(-2, -2);
+        pairingButtonLp.leftMargin = dp(8);
+        header.addView(pairingButton, pairingButtonLp);
+        content.addView(header);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("YOUR APPS · YOUR ORBIT");
+        subtitle.setText("NEXORA · YOUR TV, YOUR SPACE");
         subtitle.setTextColor(0xFFB9C8F6);
         subtitle.setTextSize(12);
         subtitle.setLetterSpacing(0.18f);
@@ -85,26 +156,137 @@ public final class CosmicHomeActivity extends Activity {
         scroll.addView(grid, new ScrollView.LayoutParams(-1, -2));
 
         TextView footer = new TextView(this);
-        footer.setText("OK  OPEN     BACK  EXIT     •     LOCAL ANIMATIONS · NO VIDEO BACKGROUND");
+        footer.setText("OK  OPEN     BACK  EXIT     •     OFFLINE WALLPAPERS · LOCAL-FIRST");
         footer.setTextColor(0xFF9AA9CF);
         footer.setTextSize(10);
         LinearLayout.LayoutParams footLp = new LinearLayout.LayoutParams(-2, -2);
         footLp.topMargin = dp(8);
         content.addView(footer, footLp);
+        pairPanel = new LinearLayout(this);
+        pairPanel.setOrientation(LinearLayout.HORIZONTAL);
+        pairPanel.setGravity(Gravity.CENTER_VERTICAL);
+        pairPanel.setPadding(dp(8), dp(8), dp(8), dp(8));
+        pairPanel.setBackground(makeTileBackground(false));
+        ImageView qr = new ImageView(this);
+        qr.setTag("pairing-qr");
+        pairPanel.addView(qr, new LinearLayout.LayoutParams(dp(94), dp(94)));
+        pairingStatus = new TextView(this);
+        pairingStatus.setText("Starting local remote…");
+        pairingStatus.setTextColor(Color.WHITE);
+        pairingStatus.setTextSize(10);
+        pairingStatus.setPadding(dp(8), 0, dp(4), 0);
+        pairPanel.addView(pairingStatus, new LinearLayout.LayoutParams(dp(160), -2));
+        FrameLayout.LayoutParams pairLp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.RIGHT);
+        pairLp.setMargins(dp(8), dp(8), dp(24), dp(20));
+        pairPanel.setVisibility(View.GONE);
+        root.addView(pairPanel, pairLp);
+        workspace = new WorkspaceWidgetLayer(this);
+        workspace.setVisibility(View.GONE);
+        root.addView(workspace, new FrameLayout.LayoutParams(-1, -1));
+        drawingBoard = new RemoteDrawingView(this);
+        drawingBoard.setVisibility(View.GONE);
+        FrameLayout.LayoutParams drawLp = new FrameLayout.LayoutParams((int)(getResources().getDisplayMetrics().widthPixels * 0.68f), (int)(getResources().getDisplayMetrics().heightPixels * 0.66f), Gravity.CENTER);
+        root.addView(drawingBoard, drawLp);
+        drawingBoard.bringToFront();
+        cameraFrameView = new ImageView(this);
+        cameraFrameView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        cameraFrameView.setBackgroundColor(0xFF05070D);
+        cameraFrameView.setVisibility(View.GONE);
+        root.addView(cameraFrameView, new FrameLayout.LayoutParams(-1, -1));
         setContentView(root);
+        applySavedWallpaper();
+        // The wallpaper tracks real Android focus, including D-pad and paired-phone navigation.
+        root.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
+            if (sky == null || newFocus == null || sky.getWidth() <= 0 || sky.getHeight() <= 0) return;
+            int[] rootPos = new int[2];
+            int[] focusPos = new int[2];
+            root.getLocationOnScreen(rootPos);
+            newFocus.getLocationOnScreen(focusPos);
+            float centerX = focusPos[0] + newFocus.getWidth() / 2f - rootPos[0];
+            float centerY = focusPos[1] + newFocus.getHeight() / 2f - rootPos[1];
+            sky.setGazeTarget(centerX / Math.max(1f, root.getWidth()),
+                    centerY / Math.max(1f, root.getHeight()));
+        });
+    }
+
+    private static final String[] WALLPAPER_LABELS = {
+            "Animated default", "Mountain Sunrise", "Beach Paradise", "Rainy City", "Snowy Winter",
+            "Autumn Forest", "City Lights", "Wildlife Safari", "Lotus Pond", "Summer Sunflowers", "Abstract Flow"
+    };
+    private static final String[] WALLPAPER_RESOURCES = {
+            "", "mountain_sunrise", "beach_summer", "rainy_window", "snow_winter",
+            "autumn_forest", "city_night", "wildlife_lion", "nature_lotus", "summer_field", "abstract_flow"
+    };
+
+    private void showWallpaperPicker() {
+        new AlertDialog.Builder(this)
+                .setTitle("Choose your wallpaper")
+                .setItems(WALLPAPER_LABELS, (dialog, which) -> {
+                    getSharedPreferences("nexora_settings", MODE_PRIVATE).edit().putInt("wallpaper_index", which).apply();
+                    applyWallpaper(which);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void applySavedWallpaper() {
+        int selected = getSharedPreferences("nexora_settings", MODE_PRIVATE).getInt("wallpaper_index", 0);
+        applyWallpaper(Math.max(0, Math.min(selected, WALLPAPER_LABELS.length - 1)));
+    }
+
+    private void applyWallpaper(int index) {
+        if (index <= 0) {
+            wallpaperView.setVisibility(View.GONE);
+            sky.setVisibility(View.VISIBLE);
+            return;
+        }
+        String resourceName = WALLPAPER_RESOURCES[index];
+        int resourceId = getResources().getIdentifier(resourceName, "drawable", getPackageName());
+        if (resourceId == 0) {
+            wallpaperView.setVisibility(View.GONE);
+            sky.setVisibility(View.VISIBLE);
+            new AlertDialog.Builder(this).setTitle("Wallpaper unavailable")
+                    .setMessage("This wallpaper was not included in this APK build. Rebuild the complete asset bundle.")
+                    .setPositiveButton("OK", null).show();
+            return;
+        }
+        wallpaperView.setImageResource(resourceId);
+        wallpaperView.setContentDescription(WALLPAPER_LABELS[index]);
+        wallpaperView.setVisibility(View.VISIBLE);
+        sky.setVisibility(View.GONE);
+    }
+
+    private TextView headerButton(String text) {
+        TextView button = new TextView(this);
+        button.setText(text);
+        button.setTextColor(Color.WHITE);
+        button.setTextSize(10);
+        button.setTypeface(Typeface.DEFAULT_BOLD);
+        button.setGravity(Gravity.CENTER);
+        button.setPadding(dp(12), dp(10), dp(12), dp(10));
+        button.setBackground(makeTileBackground(false));
+        button.setFocusable(true);
+        button.setClickable(true);
+        return button;
     }
 
     private void loadApps() {
         PackageManager pm = getPackageManager();
-        Intent query = new Intent(Intent.ACTION_MAIN);
-        query.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
-        List<ResolveInfo> apps = pm.queryIntentActivities(query, 0);
-        if (apps == null || apps.isEmpty()) {
-            query.removeCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
-            query.addCategory(Intent.CATEGORY_LAUNCHER);
-            apps = pm.queryIntentActivities(query, 0);
+        // Query both TV and standard launcher surfaces, then deduplicate by stable component identity.
+        Map<String, ResolveInfo> unique = new java.util.LinkedHashMap<>();
+        Intent tvQuery = new Intent(Intent.ACTION_MAIN);
+        tvQuery.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
+        List<ResolveInfo> tvApps = pm.queryIntentActivities(tvQuery, 0);
+        if (tvApps != null) for (ResolveInfo info : tvApps) {
+            if (info.activityInfo != null) unique.put(info.activityInfo.packageName + "/" + info.activityInfo.name, info);
         }
-        if (apps != null) launchables.addAll(apps);
+        Intent mobileQuery = new Intent(Intent.ACTION_MAIN);
+        mobileQuery.addCategory(Intent.CATEGORY_LAUNCHER);
+        List<ResolveInfo> mobileApps = pm.queryIntentActivities(mobileQuery, 0);
+        if (mobileApps != null) for (ResolveInfo info : mobileApps) {
+            if (info.activityInfo != null) unique.putIfAbsent(info.activityInfo.packageName + "/" + info.activityInfo.name, info);
+        }
+        launchables.addAll(unique.values());
         Collections.sort(launchables, new Comparator<ResolveInfo>() {
             @Override public int compare(ResolveInfo a, ResolveInfo b) {
                 return String.valueOf(a.loadLabel(pm)).compareToIgnoreCase(String.valueOf(b.loadLabel(pm)));
@@ -114,7 +296,9 @@ public final class CosmicHomeActivity extends Activity {
         // Do not list this prototype or Settings as a privileged/system shortcut.
         for (ResolveInfo info : launchables) {
             if (info.activityInfo == null || getPackageName().equals(info.activityInfo.packageName)) continue;
-            grid.addView(createTile(info));
+            View tile = createTile(info);
+            appTiles.add(tile);
+            grid.addView(tile);
         }
         if (grid.getChildCount() > 0) {
             grid.getChildAt(0).requestFocus();
@@ -124,6 +308,237 @@ public final class CosmicHomeActivity extends Activity {
             empty.setTextColor(Color.WHITE);
             grid.addView(empty);
         }
+    }
+
+
+    private int themedIconForLabel(String label) {
+        String resource = null;
+        if (label.contains("setting")) resource = "icon_settings";
+        else if (label.contains("file") || label.contains("manager") || label.contains("storage")) resource = "icon_files";
+        else if (label.contains("gallery") || label.contains("photo") || label.contains("image")) resource = "icon_gallery";
+        else if (label.contains("camera")) resource = "icon_camera";
+        else if (label.contains("music") || label.contains("audio")) resource = "icon_music";
+        else if (label.contains("calculator")) resource = "icon_calculator";
+        else if (label.contains("clock") || label.contains("alarm")) resource = "icon_clock";
+        else if (label.contains("weather")) resource = "icon_weather";
+        else if (label.contains("note")) resource = "icon_notes";
+        else if (label.contains("task") || label.contains("todo")) resource = "icon_tasks";
+        else if (label.contains("browser") || label.equals("internet") || label.contains("chrome")) resource = "icon_browser";
+        else if (label.contains("bluetooth")) resource = "icon_bluetooth";
+        else if (label.contains("game")) resource = "icon_games";
+        else if (label.contains("news")) resource = "icon_news";
+        else if (label.contains("calendar")) resource = "icon_calendar";
+        else if (label.equals("apps") || label.contains("app drawer")) resource = "icon_apps";
+        return resource == null ? 0 : getResources().getIdentifier(resource, "drawable", getPackageName());
+    }
+    private void startRemoteServer() {
+        try {
+            pairingKey = new byte[32];
+            new SecureRandom().nextBytes(pairingKey);
+            remoteServer = new RemoteControlServer(8765, pairingKey, new RemoteControlServer.Handler() {
+                @Override public void onCommand(JSONObject command) {
+                    runOnUiThread(() -> handleRemoteCommand(command));
+                }
+                @Override public void onPeerCountChanged(int count) {
+                    runOnUiThread(() -> {
+                        if (pairingStatus != null) pairingStatus.setText(count > 0 ? "PHONE CONNECTED\nRemote + drawing active" : pairingDetails);
+                        if (count == 0 && cameraFrameView != null) cameraFrameView.setVisibility(View.GONE);
+                    });
+                }
+            });
+            remoteServer.start();
+            String host = getLocalIpv4();
+            if (host == null) {
+                if (pairingStatus != null) pairingStatus.setText("Connect TV to Wi-Fi\nThen reopen pairing");
+                return;
+            }
+            String key = Base64.getUrlEncoder().withoutPadding().encodeToString(pairingKey);
+            String payload = "cosmicremote://pair?host=" + host + "&port=8765&key=" + key;
+            Bitmap bitmap = makeQr(payload, 260);
+            if (root != null) {
+                View found = root.findViewWithTag("pairing-qr");
+                if (found instanceof ImageView) ((ImageView) found).setImageBitmap(bitmap);
+            }
+            pairingDetails = "TV: " + host + "\nPort: 8765\nPairing key:\n" + key + "\nSame Wi-Fi only";
+            if (pairingStatus != null) pairingStatus.setText(pairingDetails);
+        } catch (Exception e) {
+            if (pairingStatus != null) pairingStatus.setText("Remote unavailable\n" + e.getClass().getSimpleName());
+        }
+    }
+
+    private Bitmap makeQr(String value, int size) throws Exception {
+        Map<EncodeHintType, Object> hints = new HashMap<>();
+        hints.put(EncodeHintType.MARGIN, 1);
+        BitMatrix matrix = new MultiFormatWriter().encode(value, BarcodeFormat.QR_CODE, size, size, hints);
+        Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        for (int y = 0; y < size; y++) for (int x = 0; x < size; x++)
+            bitmap.setPixel(x, y, matrix.get(x, y) ? Color.BLACK : Color.WHITE);
+        return bitmap;
+    }
+
+    private String getLocalIpv4() {
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces != null && interfaces.hasMoreElements()) {
+                NetworkInterface ni = interfaces.nextElement();
+                if (!ni.isUp() || ni.isLoopback()) continue;
+                Enumeration<java.net.InetAddress> addresses = ni.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    java.net.InetAddress address = addresses.nextElement();
+                    if (address instanceof Inet4Address && !address.isLoopbackAddress()) return address.getHostAddress();
+                }
+            }
+        } catch (Exception ignored) { }
+        return null;
+    }
+
+    private void filterApps(String raw) {
+        String query = raw.trim().toLowerCase(java.util.Locale.ROOT);
+        for (View tile : appTiles) {
+            CharSequence label = tile.getContentDescription();
+            tile.setVisibility(query.isEmpty() || (label != null && label.toString().toLowerCase(java.util.Locale.ROOT).contains(query)) ? View.VISIBLE : View.GONE);
+        }
+        if (grid != null) {
+            View focused = getCurrentFocus();
+            if (focused == null || focused.getVisibility() != View.VISIBLE) for (View tile : appTiles) if (tile.getVisibility() == View.VISIBLE) { tile.requestFocus(); break; }
+        }
+    }
+
+    /** Local voice-command router; transcription is supplied by the paired phone. */
+    private void handleVoiceCommand(String raw) {
+        if (NexoraAccessibilityService.dispatch(raw)) return;
+        String q = raw == null ? "" : raw.trim().toLowerCase(java.util.Locale.ROOT);
+        if (q.isEmpty()) return;
+        // Local voice-command router: speech is transcribed on the paired phone; commands are executed here.
+        if (q.equals("home") || q.equals("go home") || q.equals("launcher")) {
+            try { Intent home = new Intent(Intent.ACTION_MAIN); home.addCategory(Intent.CATEGORY_HOME); home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(home); } catch (Exception ignored) { filterApps(""); }
+            return;
+        }
+        if (q.equals("back") || q.equals("go back") || q.equals("close this") || q.equals("close app")) { onBackPressed(); return; }
+        if (q.contains("show workspace") || q.contains("open workspace") || q.contains("notes") || q.contains("todo") || q.contains("tasks")) {
+            workspace.setVisibility(View.VISIBLE); workspace.bringToFront(); workspace.requestFocus(); return;
+        }
+        if (q.contains("hide workspace") || q.contains("close workspace")) { if(workspace!=null)workspace.setVisibility(View.GONE); return; }
+        if (q.contains("new note") || q.contains("create note") || q.contains("add note")) {
+            workspace.setVisibility(View.VISIBLE); workspace.bringToFront(); workspace.requestFocus();
+            new AlertDialog.Builder(this).setTitle("Voice command").setMessage("Use + Note in the workspace to enter the note text.").setPositiveButton("Open workspace",(d,w)->{}).show(); return;
+        }
+        if (q.contains("set wallpaper") || q.contains("use wallpaper") || q.contains("wallpaper to")) {
+            String[] names={"mountain sunrise","beach","rain","rainy","snow","winter","autumn","city night","lion","wildlife","lotus","sunflower","summer","abstract"};
+            int[] indices={1,2,3,3,4,4,5,6,7,7,8,9,9,10};
+            for(int i=0;i<names.length;i++) if(q.contains(names[i])) { applyWallpaper(indices[i]); getSharedPreferences("nexora_settings",MODE_PRIVATE).edit().putInt("wallpaper_index",indices[i]).apply(); return; }
+            showWallpaperPicker(); return;
+        }
+        if (q.contains("wallpaper") || q.contains("background") || q.contains("change theme")) { showWallpaperPicker(); return; }
+        if (q.contains("select") || q.contains("open selected") || q.contains("press ok")) { View focused=getCurrentFocus(); if(focused!=null)focused.performClick(); return; }
+        if (q.contains("move right") || q.equals("right")) { View focused=getCurrentFocus(); if(focused!=null){View next=focused.focusSearch(View.FOCUS_RIGHT);if(next!=null)next.requestFocus();} return; }
+        if (q.contains("move left") || q.equals("left")) { View focused=getCurrentFocus(); if(focused!=null){View next=focused.focusSearch(View.FOCUS_LEFT);if(next!=null)next.requestFocus();} return; }
+        if (q.contains("move up") || q.equals("up")) { View focused=getCurrentFocus(); if(focused!=null){View next=focused.focusSearch(View.FOCUS_UP);if(next!=null)next.requestFocus();} return; }
+        if (q.contains("move down") || q.equals("down")) { View focused=getCurrentFocus(); if(focused!=null){View next=focused.focusSearch(View.FOCUS_DOWN);if(next!=null)next.requestFocus();} return; }
+        if (q.contains("prayer") || q.contains("news") || q.contains("headlines") || q.contains("newspaper")) { startActivity(new Intent(this, InfoReaderActivity.class)); return; }
+        if (q.contains("mute")) { AudioManager audio=(AudioManager)getSystemService(AUDIO_SERVICE); if(audio!=null)audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_MUTE,0); return; }
+        if (q.contains("unmute")) { AudioManager audio=(AudioManager)getSystemService(AUDIO_SERVICE); if(audio!=null)audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_UNMUTE,0); return; }
+        if (q.contains("volume up") || q.contains("increase volume") || q.contains("louder")) { AudioManager a=(AudioManager)getSystemService(AUDIO_SERVICE); if(a!=null)a.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_RAISE,AudioManager.FLAG_SHOW_UI); return; }
+        if (q.contains("volume down") || q.contains("decrease volume") || q.contains("quieter")) { AudioManager a=(AudioManager)getSystemService(AUDIO_SERVICE); if(a!=null)a.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_LOWER,AudioManager.FLAG_SHOW_UI); return; }
+        if (q.contains("settings")) { try { startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS)); } catch(Exception ignored){} return; }
+        if (q.contains("search") || q.contains("find app") || q.contains("show all apps") || q.contains("clear search")) {
+            String term=q.replaceFirst("^(search|search for|find app|find|show me)\\s+","").trim();
+            if(q.contains("show all apps")||q.contains("clear search"))term="";
+            filterApps(term); return;
+        }
+        String search = q.replaceFirst("^(open|launch|start|play|watch|switch to|go to|find|search for|show me)\\s+", "").trim();
+        if (search.equals("youtube") || search.equals("netflix") || search.equals("prime video") || search.equals("play store") || search.equals("settings")) {
+            // Match the actual installed activity label; never assume an app exists.
+        }
+        for (View tile : appTiles) {
+            CharSequence label = tile.getContentDescription();
+            if (label != null && (label.toString().toLowerCase(java.util.Locale.ROOT).contains(search)
+                    || search.contains(label.toString().toLowerCase(java.util.Locale.ROOT)))) {
+                tile.setVisibility(View.VISIBLE); tile.requestFocus(); tile.performClick(); return;
+            }
+        }
+        filterApps(search);
+    }
+
+    private void handleRemoteCommand(JSONObject command) {
+        String type = command.optString("type", "");
+        if ("key".equals(type)) {
+            String key = command.optString("key", "");
+            View focused = getCurrentFocus();
+            if ("ok".equals(key) && focused != null) focused.performClick();
+            else if ("back".equals(key)) {
+                if (drawingBoard != null && drawingBoard.getVisibility() == View.VISIBLE) drawingBoard.setVisibility(View.GONE);
+                else finish();
+            } else if (focused != null) {
+                int direction = "left".equals(key) ? View.FOCUS_LEFT : "right".equals(key) ? View.FOCUS_RIGHT :
+                        "up".equals(key) ? View.FOCUS_UP : "down".equals(key) ? View.FOCUS_DOWN : 0;
+                if (direction != 0) {
+                    View next = focused.focusSearch(direction);
+                    if (next != null) next.requestFocus();
+                }
+            }
+        } else if ("pointer_delta".equals(type)) {
+            float dx = (float) command.optDouble("dx", 0);
+            float dy = (float) command.optDouble("dy", 0);
+            remoteDxAccumulator += dx;
+            remoteDyAccumulator += dy;
+            if (Math.abs(remoteDxAccumulator) > 0.018f || Math.abs(remoteDyAccumulator) > 0.018f) {
+                View focused = getCurrentFocus();
+                int direction = Math.abs(remoteDxAccumulator) > Math.abs(remoteDyAccumulator)
+                        ? (remoteDxAccumulator < 0 ? View.FOCUS_LEFT : View.FOCUS_RIGHT)
+                        : (remoteDyAccumulator < 0 ? View.FOCUS_UP : View.FOCUS_DOWN);
+                remoteDxAccumulator = 0f;
+                remoteDyAccumulator = 0f;
+                if (focused != null) {
+                    View next = focused.focusSearch(direction);
+                    if (next != null) next.requestFocus();
+                }
+            }
+        } else if ("pointer_tap".equals(type)) {
+            View focused = getCurrentFocus();
+            if (focused != null) focused.performClick();
+        } else if ("voice_text".equals(type)) {
+            handleVoiceCommand(command.optString("text", ""));
+        } else if ("text_input".equals(type)) {
+            filterApps(command.optString("text", ""));
+        } else if ("stroke_begin".equals(type)) {
+            if (drawingBoard != null) {
+                drawingBoard.setVisibility(View.VISIBLE);
+                drawingBoard.bringToFront();
+                drawingBoard.beginStroke((float)command.optDouble("x", 0.5), (float)command.optDouble("y", 0.5),
+                        command.optInt("color", Color.WHITE), (float)command.optDouble("width", 0.004));
+            }
+        } else if ("stroke_points".equals(type)) {
+            if (drawingBoard != null) drawingBoard.addPoints(command.optJSONArray("points"));
+        } else if ("stroke_end".equals(type)) {
+            if (drawingBoard != null) drawingBoard.endStroke();
+        } else if ("stroke_cancel".equals(type)) {
+            if (drawingBoard != null) drawingBoard.clearDrawing();
+        } else if ("camera_frame".equals(type)) {
+            try {
+                byte[] bytes = Base64.getDecoder().decode(command.getString("jpeg"));
+                if (bytes.length == 0 || bytes.length > 36000) return;
+                BitmapFactory.Options bounds = new BitmapFactory.Options(); bounds.inJustDecodeBounds = true;
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.length, bounds);
+                if (bounds.outWidth <= 0 || bounds.outHeight <= 0 || bounds.outWidth > 1280 || bounds.outHeight > 720) return;
+                Bitmap frame = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                if (frame != null && cameraFrameView != null) { cameraFrameView.setImageBitmap(frame); cameraFrameView.setVisibility(View.VISIBLE); cameraFrameView.bringToFront(); }
+            } catch (Exception ignored) { }
+        } else if ("camera_stop".equals(type)) {
+            if (cameraFrameView != null) cameraFrameView.setVisibility(View.GONE);
+        }
+    }
+
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == WorkspaceWidgetLayer.REQUEST_PICK_IMAGE && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            if (workspace != null) workspace.onImagePicked(data.getData());
+        }
+    }
+
+    @Override protected void onDestroy() {
+        if (remoteServer != null) remoteServer.closeSafely();
+        super.onDestroy();
     }
 
     private View createTile(final ResolveInfo info) {
@@ -136,31 +551,22 @@ public final class CosmicHomeActivity extends Activity {
         tile.setBackground(makeTileBackground(false));
         tile.setContentDescription(String.valueOf(info.loadLabel(getPackageManager())));
 
-        FrameLayout planet = new FrameLayout(this);
-        GradientDrawable orb = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{0xFF8B9BFF, 0xFF5B4CB8, 0xFF222B63});
-        orb.setShape(GradientDrawable.OVAL);
-        orb.setStroke(dp(1), 0xFFB9C8FF);
-        planet.setBackground(orb);
+        // Minimal icon stage: no tile box or decorative badge, just a white logo and a soft focus aura.
+        FrameLayout iconStage = new FrameLayout(this);
+        GradientDrawable aura = new GradientDrawable();
+        aura.setShape(GradientDrawable.OVAL);
+        aura.setColor(Color.TRANSPARENT);
+        iconStage.setBackground(aura);
 
-        // Actual installed-app icon sits inside a planet-like orb.
         ImageView appIcon = new ImageView(this);
-        appIcon.setImageDrawable(info.loadIcon(getPackageManager()));
+        int themedIcon = themedIconForLabel(String.valueOf(info.loadLabel(getPackageManager())).toLowerCase(java.util.Locale.ROOT));
+        if (themedIcon != 0) appIcon.setImageResource(themedIcon);
+        else appIcon.setImageDrawable(info.loadIcon(getPackageManager()));
+        appIcon.setColorFilter(Color.WHITE);
         appIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(dp(34), dp(34), Gravity.CENTER);
-        planet.addView(appIcon, iconLp);
-
-        // Tiny satellite marker on an orbital ring, drawn locally.
-        View orbitDot = new View(this);
-        GradientDrawable dot = new GradientDrawable();
-        dot.setShape(GradientDrawable.OVAL);
-        dot.setColor(0xFFFFE6A6);
-        orbitDot.setBackground(dot);
-        FrameLayout.LayoutParams dotLp = new FrameLayout.LayoutParams(dp(8), dp(8), Gravity.TOP | Gravity.RIGHT);
-        dotLp.topMargin = dp(2);
-        dotLp.rightMargin = dp(8);
-        planet.addView(orbitDot, dotLp);
-        tile.addView(planet, new LinearLayout.LayoutParams(dp(64), dp(64)));
+        FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(dp(52), dp(52), Gravity.CENTER);
+        iconStage.addView(appIcon, iconLp);
+        tile.addView(iconStage, new LinearLayout.LayoutParams(dp(68), dp(62)));
 
         TextView label = new TextView(this);
         label.setText(info.loadLabel(getPackageManager()));
@@ -173,13 +579,20 @@ public final class CosmicHomeActivity extends Activity {
         labelLp.topMargin = dp(6);
         tile.addView(label, labelLp);
 
+        tile.setBackgroundColor(Color.TRANSPARENT);
         tile.setOnFocusChangeListener((v, focused) -> {
-            v.setScaleX(focused ? 1.09f : 1f);
-            v.setScaleY(focused ? 1.09f : 1f);
-            v.setBackground(makeTileBackground(focused));
-            planet.animate().rotationBy(focused ? 18f : -18f).setDuration(220).start();
+            v.animate().scaleX(focused ? 1.10f : 1f).scaleY(focused ? 1.10f : 1f)
+                    .setDuration(180L).start();
+            aura.setColor(focused ? 0x3346D9FF : Color.TRANSPARENT);
+            aura.setStroke(dp(focused ? 1 : 0), focused ? 0x667DEBFF : Color.TRANSPARENT);
+            iconStage.setBackground(aura);
+            label.setTextColor(focused ? 0xFFBCEFFF : Color.WHITE);
+            if (focused) v.playSoundEffect(android.view.SoundEffectConstants.NAVIGATION_LEFT);
         });
-        tile.setOnClickListener(v -> launch(info));
+        tile.setOnClickListener(v -> {
+            v.playSoundEffect(android.view.SoundEffectConstants.CLICK);
+            launch(info);
+        });
         tile.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() == KeyEvent.ACTION_UP &&
                     (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
