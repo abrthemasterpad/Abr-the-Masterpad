@@ -8,6 +8,7 @@
         android:label="Cosmic Remote"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
+        <activity android:name=".PortraitCaptureActivity" android:screenOrientation="portrait" android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
