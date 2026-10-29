@@ -12,8 +12,7 @@
         android:usesCleartextTraffic="false"
         android:allowBackup="false"
         android:label="Nexora TV"
-        android:theme="@android:style/Theme.Material.NoActionBar"
-        android:usesCleartextTraffic="false">
+        android:theme="@android:style/Theme.Material.NoActionBar">
         <activity android:name=".InfoReaderActivity" android:exported="false" android:screenOrientation="landscape" />
         <activity
             android:name=".CosmicHomeActivity"
