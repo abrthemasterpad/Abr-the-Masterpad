@@ -1,6 +1,16 @@
 package io.causelane.cosmicremote;
 
 import android.content.Intent;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.hardware.Camera;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
+import android.os.Handler;
+import android.os.Looper;
+import java.io.ByteArrayOutputStream;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -41,6 +51,11 @@ import java.util.Locale;
  */
 public final class MainActivity extends AppCompatActivity {
     private static final int REQUEST_VOICE = 2401;
+    private static final int REQUEST_CAMERA_PERMISSION = 2402;
+    private Camera camera;
+    private SurfaceView cameraSurface;
+    private final Handler cameraHandler = new Handler(Looper.getMainLooper());
+    private boolean cameraStreamActive = false;
     private EditText hostField, portField, keyField, textField;
     private TextView status;
     private LinearLayout root, panel;
