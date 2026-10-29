@@ -412,13 +412,19 @@ public final class MainActivity extends AppCompatActivity {
             }
             if (e.getAction()==MotionEvent.ACTION_MOVE) {
                 JSONArray points=new JSONArray();
-                for (int i=0;i<e.getHistorySize();i++) {
-                    points.put(Math.max(0,Math.min(1f,e.getHistoricalX(i)/Math.max(1,getWidth()))));
-                    points.put(Math.max(0,Math.min(1f,e.getHistoricalY(i)/Math.max(1,getHeight()))));
-                }
-                points.put(x); points.put(y);
                 JSONObject c=new JSONObject();
-                try { c.put("type","stroke_points"); c.put("points",points); } catch(Exception ignored) { }
+                try {
+                    for (int i=0;i<e.getHistorySize();i++) {
+                        points.put(Math.max(0,Math.min(1f,e.getHistoricalX(i)/Math.max(1,getWidth()))));
+                        points.put(Math.max(0,Math.min(1f,e.getHistoricalY(i)/Math.max(1,getHeight()))));
+                    }
+                    points.put(x);
+                    points.put(y);
+                    c.put("type","stroke_points");
+                    c.put("points",points);
+                } catch (org.json.JSONException ignored) {
+                    return true;
+                }
                 send(c); localPath.lineTo(e.getX(),e.getY()); lastX=x; lastY=y; invalidate(); return true;
             }
             if (e.getAction()==MotionEvent.ACTION_UP || e.getAction()==MotionEvent.ACTION_CANCEL) {
