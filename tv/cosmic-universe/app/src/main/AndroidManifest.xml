@@ -9,10 +9,12 @@
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <application
+        android:usesCleartextTraffic="false"
         android:allowBackup="false"
         android:label="Nexora TV"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="false">
+        <activity android:name=".InfoReaderActivity" android:exported="false" android:screenOrientation="landscape" />
         <activity
             android:name=".CosmicHomeActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
