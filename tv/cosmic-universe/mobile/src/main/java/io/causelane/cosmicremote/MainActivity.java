@@ -46,6 +46,7 @@ public final class MainActivity extends AppCompatActivity {
     private RemoteControlClient client;
     private byte[] pairingKey;
     private int accent = 0xFF8CA8FF;
+    private boolean manualPairingVisible = false;
 
     @Override protected void onCreate(@Nullable Bundle state) {
         super.onCreate(state);
@@ -87,9 +88,20 @@ public final class MainActivity extends AppCompatActivity {
         portField = field("Port");
         portField.setText("8765");
         keyField = field("Pairing key (from QR)");
-        root.addView(hostField);
-        root.addView(portField);
-        root.addView(keyField);
+        LinearLayout manualFields = new LinearLayout(this);
+        manualFields.setOrientation(LinearLayout.VERTICAL);
+        manualFields.addView(hostField);
+        manualFields.addView(portField);
+        manualFields.addView(keyField);
+        manualFields.setVisibility(View.GONE);
+        root.addView(manualFields);
+        Button manualPairing = button("ENTER PAIRING DETAILS MANUALLY");
+        manualPairing.setOnClickListener(v -> {
+            manualPairingVisible = !manualPairingVisible;
+            manualFields.setVisibility(manualPairingVisible ? View.VISIBLE : View.GONE);
+            manualPairing.setText(manualPairingVisible ? "HIDE MANUAL PAIRING" : "ENTER PAIRING DETAILS MANUALLY");
+        });
+        root.addView(manualPairing);
 
         LinearLayout connectRow = row();
         Button scan = button("SCAN TV QR");
@@ -223,7 +235,8 @@ public final class MainActivity extends AppCompatActivity {
             hostField.setText(uri.getQueryParameter("host"));
             portField.setText(uri.getQueryParameter("port"));
             keyField.setText(uri.getQueryParameter("key"));
-            status.setText("TV QR read. Tap CONNECT.");
+            status.setText("TV found. Connecting securely over your local network…");
+            connectManually();
         } catch (Exception e) {
             status.setText("This QR is not a supported Cosmic Remote pairing code.");
         }
