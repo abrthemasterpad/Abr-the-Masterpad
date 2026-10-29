@@ -56,6 +56,7 @@ public final class CosmicHomeActivity extends Activity {
     private RemoteControlServer remoteServer;
     private WorkspaceWidgetLayer workspace;
     private TextView pairingStatus;
+    private LinearLayout pairPanel;
     private final List<View> appTiles = new ArrayList<>();
     private byte[] pairingKey;
     private float remoteDxAccumulator;
@@ -88,7 +89,28 @@ public final class CosmicHomeActivity extends Activity {
         title.setTextSize(25);
         title.setLetterSpacing(0.12f);
         title.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
-        content.addView(title);
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView workspaceButton = headerButton("WORKSPACE");
+        workspaceButton.setOnClickListener(v -> {
+            boolean show = workspace.getVisibility() != View.VISIBLE;
+            workspace.setVisibility(show ? View.VISIBLE : View.GONE);
+            workspaceButton.setText(show ? "CLOSE WORKSPACE" : "WORKSPACE");
+        });
+        header.addView(workspaceButton);
+        TextView pairingButton = headerButton("PAIR REMOTE");
+        pairingButton.setOnClickListener(v -> {
+            boolean show = pairPanel.getVisibility() != View.VISIBLE;
+            pairPanel.setVisibility(show ? View.VISIBLE : View.GONE);
+            if (show) pairPanel.bringToFront();
+            pairingButton.setText(show ? "HIDE PAIRING" : "PAIR REMOTE");
+        });
+        LinearLayout.LayoutParams pairingButtonLp = new LinearLayout.LayoutParams(-2, -2);
+        pairingButtonLp.leftMargin = dp(8);
+        header.addView(pairingButton, pairingButtonLp);
+        content.addView(header);
 
         TextView subtitle = new TextView(this);
         subtitle.setText("YOUR APPS · YOUR ORBIT");
@@ -117,7 +139,7 @@ public final class CosmicHomeActivity extends Activity {
         LinearLayout.LayoutParams footLp = new LinearLayout.LayoutParams(-2, -2);
         footLp.topMargin = dp(8);
         content.addView(footer, footLp);
-        LinearLayout pairPanel = new LinearLayout(this);
+        pairPanel = new LinearLayout(this);
         pairPanel.setOrientation(LinearLayout.HORIZONTAL);
         pairPanel.setGravity(Gravity.CENTER_VERTICAL);
         pairPanel.setPadding(dp(8), dp(8), dp(8), dp(8));
@@ -133,16 +155,31 @@ public final class CosmicHomeActivity extends Activity {
         pairPanel.addView(pairingStatus, new LinearLayout.LayoutParams(dp(160), -2));
         FrameLayout.LayoutParams pairLp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.RIGHT);
         pairLp.setMargins(dp(8), dp(8), dp(24), dp(20));
+        pairPanel.setVisibility(View.GONE);
         root.addView(pairPanel, pairLp);
         workspace = new WorkspaceWidgetLayer(this);
+        workspace.setVisibility(View.GONE);
         root.addView(workspace, new FrameLayout.LayoutParams(-1, -1));
         drawingBoard = new RemoteDrawingView(this);
         drawingBoard.setVisibility(View.GONE);
         FrameLayout.LayoutParams drawLp = new FrameLayout.LayoutParams((int)(getResources().getDisplayMetrics().widthPixels * 0.68f), (int)(getResources().getDisplayMetrics().heightPixels * 0.66f), Gravity.CENTER);
         root.addView(drawingBoard, drawLp);
         drawingBoard.bringToFront();
-        pairPanel.bringToFront();
         setContentView(root);
+    }
+
+    private TextView headerButton(String text) {
+        TextView button = new TextView(this);
+        button.setText(text);
+        button.setTextColor(Color.WHITE);
+        button.setTextSize(10);
+        button.setTypeface(Typeface.DEFAULT_BOLD);
+        button.setGravity(Gravity.CENTER);
+        button.setPadding(dp(12), dp(10), dp(12), dp(10));
+        button.setBackground(makeTileBackground(false));
+        button.setFocusable(true);
+        button.setClickable(true);
+        return button;
     }
 
     private void loadApps() {
