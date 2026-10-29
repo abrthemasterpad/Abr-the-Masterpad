@@ -1,6 +1,10 @@
 package io.causelane.cosmic;
 
 import android.app.AlertDialog;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.os.Build;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
@@ -41,6 +45,9 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
     private int noteCount = 0;
     private int todoCount = 0;
     private int imageCount = 0;
+    private final java.util.ArrayList<String> undoStack = new java.util.ArrayList<>();
+    private final java.util.ArrayList<String> redoStack = new java.util.ArrayList<>();
+    private boolean applyingHistory = false;
     public static final int REQUEST_PICK_IMAGE = 7831;
     private float downX, downY, startX, startY;
     private View moving;
@@ -111,14 +118,25 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
             try {
                 int delay = Math.max(1, Math.min(10080, Integer.parseInt(delayText.trim())));
                 promptText("Reminder message", "Check my tasks", message -> {
+                    scheduleSystemReminder(message, delay);
                     addNoteCard("REMINDER IN " + delay + " MIN: " + message, dp(245), dp(160) + noteCount * dp(20), true);
                     noteCount++;
-                    postDelayed(() -> new AlertDialog.Builder(context).setTitle("Nexora Reminder").setMessage(message).setPositiveButton("Dismiss", null).show(), delay * 60000L);
-                    new AlertDialog.Builder(context).setMessage("Reminder saved. The alert runs while Nexora remains open; system alarms after app exit are not yet enabled.").setPositiveButton("OK", null).show();
                 });
             } catch (NumberFormatException e) { new AlertDialog.Builder(context).setMessage("Enter a delay from 1 to 10080 minutes.").setPositiveButton("OK", null).show(); }
         }));
         toolbar.addView(reminder);
+        Button undo = toolButton("Undo");
+        undo.setOnClickListener(v -> restoreHistory(undoStack, redoStack));
+        toolbar.addView(undo);
+        Button redo = toolButton("Redo");
+        redo.setOnClickListener(v -> restoreHistory(redoStack, undoStack));
+        toolbar.addView(redo);
+        Button align = toolButton("Align");
+        align.setOnClickListener(v -> alignCards());
+        toolbar.addView(align);
+        Button layers = toolButton("Layer");
+        layers.setOnClickListener(v -> layerMenu());
+        toolbar.addView(layers);
         Button daily = toolButton("Prayer + News");
         daily.setOnClickListener(v -> context.startActivity(new Intent(context, InfoReaderActivity.class)));
         toolbar.addView(daily);
@@ -183,7 +201,7 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
                 }).show();
     }
 
-    private void showLocalAnalysis() {
+    private void scheduleSystemReminder(String message, int delayMinutes) {\n        try {\n            Intent intent = new Intent(context, ReminderReceiver.class);\n            intent.putExtra("message", message);\n            int requestCode = (int)(System.currentTimeMillis() & 0x7fffffff);\n            PendingIntent pending = PendingIntent.getBroadcast(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);\n            AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);\n            long trigger = System.currentTimeMillis() + delayMinutes * 60000L;\n            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, pending);\n            else alarms.set(AlarmManager.RTC_WAKEUP, trigger, pending);\n            new AlertDialog.Builder(context).setTitle("Reminder scheduled").setMessage("Android will schedule this reminder even if Nexora is closed. Delivery still depends on TV power and Android background restrictions.").setPositiveButton("OK", null).show();\n        } catch (Exception e) { new AlertDialog.Builder(context).setTitle("Reminder could not be scheduled").setMessage("Android rejected this alarm. Please try again.").setPositiveButton("OK", null).show(); }\n    }\n\n    private String snapshot() {\n        JSONArray arr = new JSONArray();\n        try {\n            for (int i=0; i<getChildCount(); i++) { View v = getChildAt(i); if (!(v.getTag() instanceof JSONObject)) continue;\n                JSONObject item = new JSONObject(((JSONObject)v.getTag()).toString()); item.put("x", (int)v.getX()); item.put("y", (int)v.getY()); item.put("width", v.getWidth()); arr.put(item); }\n        } catch (Exception ignored) { }\n        return arr.toString();\n    }\n    private void rememberUndo() { if (applyingHistory) return; undoStack.add(snapshot()); if (undoStack.size() > 30) undoStack.remove(0); redoStack.clear(); }\n    private void restoreHistory(java.util.ArrayList<String> from, java.util.ArrayList<String> to) {\n        if (from.isEmpty()) { new AlertDialog.Builder(context).setMessage("No more layout history.").setPositiveButton("OK", null).show(); return; }\n        to.add(snapshot()); String json = from.remove(from.size()-1);\n        applyingHistory = true;\n        for (int i=getChildCount()-1; i>=0; i--) if (getChildAt(i).getTag() instanceof JSONObject) removeViewAt(i);\n        noteCount=0; todoCount=0; imageCount=0;\n        try { JSONArray arr = new JSONArray(json); for (int i=0;i<arr.length();i++) { JSONObject o=arr.getJSONObject(i); int x=o.optInt("x",dp(240)), y=o.optInt("y",dp(110));\n            if ("todo".equals(o.optString("type"))) { addTodoCard(o.optString("text",""),x,y,o.optBoolean("done",false)); todoCount++; }\n            else if ("image".equals(o.optString("type"))) { addImageCard(o.optString("uri",""),x,y,false); imageCount++; }\n            else { addNoteCard(o.optString("text",""),x,y,false); noteCount++; } } } catch(Exception ignored) { }\n        applyingHistory = false; save();\n    }\n    private void alignCards() {\n        rememberUndo(); int left=dp(18), top=dp(96), gap=dp(18), col=0, row=0; int cardWidth=Math.max(dp(230),getWidth()/4);\n        for(int i=0;i<getChildCount();i++){ View v=getChildAt(i); if(!(v.getTag() instanceof JSONObject))continue;\n            int x=left+col*(cardWidth+gap); int y=top+row*dp(190); v.setX(x);v.setY(y); col++; if(col>=3){col=0;row++;} } save();\n    }\n    private void layerMenu() {\n        final View[] target = new View[]{getFocusedChild()};\n        new AlertDialog.Builder(context).setTitle("Selected card layer").setItems(new String[]{"Bring to front","Send to back"},(d,which)->{\n            View v=getCurrentFocus(); while(v!=null && !(v.getTag() instanceof JSONObject)) v=(View)v.getParent();\n            if(v==null){new AlertDialog.Builder(context).setMessage("Focus a note, task or image card first.").setPositiveButton("OK",null).show();return;}\n            rememberUndo(); if(which==0)v.bringToFront();else {removeView(v);addView(v,0);} save();\n        }).setNegativeButton("Cancel",null).show();\n    }\n    private void showLocalAnalysis() {
         int notes = 0, tasks = 0, done = 0, images = 0;
         StringBuilder pending = new StringBuilder();
         for (int i = 0; i < getChildCount(); i++) {
