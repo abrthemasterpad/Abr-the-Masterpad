@@ -439,6 +439,12 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
                 } else {
                     addNoteCard(o.optString("text", ""), x, y, false); noteCount++;
                 }
+                View restored = getChildAt(getChildCount() - 1);
+                if (restored != null && o.optInt("width", 0) > 0) {
+                    ViewGroup.LayoutParams lp = restored.getLayoutParams();
+                    lp.width = o.optInt("width");
+                    restored.setLayoutParams(lp);
+                }
             }
         } catch (Exception ignored) { }
     }
