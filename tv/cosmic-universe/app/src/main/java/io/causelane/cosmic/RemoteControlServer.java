@@ -28,6 +28,8 @@ public final class RemoteControlServer extends WebSocketServer {
     private final Handler handler;
     private final Map<WebSocket, Long> lastSequence = new ConcurrentHashMap<>();
     private final Map<WebSocket, byte[]> connectionKeys = new ConcurrentHashMap<>();
+    private final Map<WebSocket, Long> rateWindowStarted = new ConcurrentHashMap<>();
+    private final Map<WebSocket, Integer> rateWindowCount = new ConcurrentHashMap<>();
     private final SecureRandom random = new SecureRandom();
 
     public RemoteControlServer(int port, byte[] key, Handler handler) {
@@ -39,6 +41,7 @@ public final class RemoteControlServer extends WebSocketServer {
     }
 
     @Override public void onOpen(WebSocket conn, ClientHandshake handshake) {
+        if (getConnections().size() > 4) { conn.close(1013, "Too many local clients"); return; }
         try {
             byte[] challenge = new byte[16];
             random.nextBytes(challenge);
@@ -46,6 +49,8 @@ public final class RemoteControlServer extends WebSocketServer {
             mac.init(new SecretKeySpec(key, "HmacSHA256"));
             connectionKeys.put(conn, mac.doFinal(challenge));
             lastSequence.put(conn, -1L);
+            rateWindowStarted.put(conn, System.currentTimeMillis());
+            rateWindowCount.put(conn, 0);
             JSONObject challengeMessage = new JSONObject();
             challengeMessage.put("challenge", Base64.getEncoder().encodeToString(challenge));
             conn.send(challengeMessage.toString());
@@ -58,6 +63,13 @@ public final class RemoteControlServer extends WebSocketServer {
     @Override public void onMessage(WebSocket conn, String message) {
         try {
             if (message == null || message.length() > 65536) return;
+            long now = System.currentTimeMillis();
+            long window = rateWindowStarted.getOrDefault(conn, now);
+            int count = rateWindowCount.getOrDefault(conn, 0);
+            if (now - window >= 1000L) { window = now; count = 0; }
+            if (count >= 120) return;
+            rateWindowStarted.put(conn, window);
+            rateWindowCount.put(conn, count + 1);
             JSONObject envelope = new JSONObject(message);
             byte[] iv = Base64.getDecoder().decode(envelope.getString("iv"));
             byte[] ciphertext = Base64.getDecoder().decode(envelope.getString("ct"));
@@ -92,6 +104,8 @@ public final class RemoteControlServer extends WebSocketServer {
     @Override public void onClose(WebSocket conn, int code, String reason, boolean remote) {
         lastSequence.remove(conn);
         connectionKeys.remove(conn);
+        rateWindowStarted.remove(conn);
+        rateWindowCount.remove(conn);
         handler.onPeerCountChanged(getConnections().size());
     }
     @Override public void onError(WebSocket conn, Exception ex) { /* surfaced through peer count/diagnostics in later pass */ }
