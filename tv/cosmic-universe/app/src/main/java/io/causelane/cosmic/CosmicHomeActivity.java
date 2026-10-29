@@ -136,6 +136,22 @@ public final class CosmicHomeActivity extends Activity {
         LinearLayout.LayoutParams soundLp = new LinearLayout.LayoutParams(-2, -2);
         soundLp.leftMargin = dp(8);
         header.addView(soundButton, soundLp);
+        TextView drawingButton = headerButton("DRAW");
+        drawingButton.setOnClickListener(v -> {
+            boolean show = drawingBoard.getVisibility() != View.VISIBLE;
+            drawingBoard.setVisibility(show ? View.VISIBLE : View.GONE);
+            if (show) drawingBoard.bringToFront();
+            else if (pairPanel != null && pairPanel.getVisibility() == View.VISIBLE) pairPanel.bringToFront();
+            drawingButton.setText(show ? "CLOSE DRAW" : "DRAW");
+        });
+        LinearLayout.LayoutParams drawingLp = new LinearLayout.LayoutParams(-2, -2);
+        drawingLp.leftMargin = dp(8);
+        header.addView(drawingButton, drawingLp);
+        TextView prayerButton = headerButton("PRAYER");
+        prayerButton.setOnClickListener(v -> startActivity(new Intent(this, InfoReaderActivity.class)));
+        LinearLayout.LayoutParams prayerLp = new LinearLayout.LayoutParams(-2, -2);
+        prayerLp.leftMargin = dp(8);
+        header.addView(prayerButton, prayerLp);
         TextView pairingButton = headerButton("PAIR REMOTE");
         pairingButton.setOnClickListener(v -> {
             boolean show = pairPanel.getVisibility() != View.VISIBLE;
