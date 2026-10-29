@@ -132,7 +132,8 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
     }
 
     private void addNoteCard(String text, int x, int y, boolean persist) {
-        LinearLayout card = cardShell(0xFFEADFA8, 0xFF6F6335);\n        JSONObject model = new JSONObject(); try { model.put("type", "note"); model.put("text", text); } catch (Exception ignored) { } card.setTag(model);
+        LinearLayout card = cardShell(0xFFEADFA8, 0xFF6F6335);
+        JSONObject model = new JSONObject(); try { model.put("type", "note"); model.put("text", text); } catch (Exception ignored) { } card.setTag(model);
         TextView title = label("✦ NOTE", 10, 0xFF6D5A27);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         card.addView(title);
@@ -154,7 +155,8 @@ public final class WorkspaceWidgetLayer extends FrameLayout {
     }
 
     private void addTodoCard(String text, int x, int y, boolean done) {
-        LinearLayout card = cardShell(0xE51B2945, 0xFF6179B9);\n        JSONObject model = new JSONObject(); try { model.put("type", "todo"); model.put("text", text); model.put("done", done); } catch (Exception ignored) { } card.setTag(model);
+        LinearLayout card = cardShell(0xE51B2945, 0xFF6179B9);
+        JSONObject model = new JSONObject(); try { model.put("type", "todo"); model.put("text", text); model.put("done", done); } catch (Exception ignored) { } card.setTag(model);
         TextView title = label("✓ TASK", 10, 0xFF9EB5FF);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         card.addView(title);
