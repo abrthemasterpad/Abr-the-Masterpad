@@ -33,6 +33,22 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Generate bundled offline wallpaper resources
+        run: |
+          python3 -m pip install --quiet cairosvg
+          mkdir -p tv/cosmic-universe/app/src/main/res/drawable-nodpi
+          python3 - <<'PY'
+          from pathlib import Path
+          import cairosvg
+          source = Path("tv/cosmic-universe/wallpapers")
+          target = Path("tv/cosmic-universe/app/src/main/res/drawable-nodpi")
+          files = sorted(source.glob("*.svg"))
+          if len(files) < 10:
+              raise SystemExit(f"Expected 10 wallpapers, found {len(files)}")
+          for svg in files:
+              cairosvg.svg2png(url=str(svg), write_to=str(target / (svg.stem + ".png")), output_width=1920, output_height=1080)
+          print(f"Generated {len(files)} offline 1920x1080 wallpaper resources")
+          PY
       - name: Compile and package debug APK
         working-directory: tv/cosmic-universe
         run: gradle --no-daemon :app:assembleDebug :mobile:assembleDebug
